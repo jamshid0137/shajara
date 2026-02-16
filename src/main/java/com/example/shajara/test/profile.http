@@ -1,0 +1,49 @@
+###name update qilish
+PUT localhost:8080//profile/detail
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqbWFkYW1pbm92LnVubGltaXRlZEBnbWFpbC5jb20iLCJyb2xlIjoiUk9MRV9VU0VSIiwiaWQiOiIxIiwiaWF0IjoxNzcwOTgxMzQ4LCJleHAiOjE3NzA5ODQ5NDh9.7j3DCifjPpjr6rl4pGyaCc0KLRR5eRaT06YuqNoV9u3XPrAe9AMf0m0TjtvUL1sN0MYPal4UC23WKunydO6LDw
+
+{
+  "name":"Jamshidbek"
+}
+
+
+###password update qilish
+PUT localhost:8080//profile/password
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqbWFkYW1pbm92LnVubGltaXRlZEBnbWFpbC5jb20iLCJyb2xlIjoiUk9MRV9VU0VSIiwiaWQiOiIxIiwiaWF0IjoxNzcwOTgxMzQ4LCJleHAiOjE3NzA5ODQ5NDh9.7j3DCifjPpjr6rl4pGyaCc0KLRR5eRaT06YuqNoV9u3XPrAe9AMf0m0TjtvUL1sN0MYPal4UC23WKunydO6LDw
+
+{
+  "currentPassword": "654321",
+  "newPassword": "1234567"
+}
+
+
+###malumotlarni olish
+GET localhost:8080//profile/me
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYWRhbWlub3ZqYW1zaGlkMjY1QGdtYWlsLmNvbSIsInJvbGUiOiJST0xFX1VTRVIiLCJpZCI6IjEiLCJpYXQiOjE3NzA5ODI4MzMsImV4cCI6MTc3MDk4NjQzM30.XjWtILbJioMvEnLocbTXfabzwnFJP0oAuy_IHgTQR3xKEPfhu8VJSoFmDDCnpRxi-cq4dBoesz-qWb_b3rK2Jg
+
+
+###name update qilish
+PUT localhost:8080//profile/change-username
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqbWFkYW1pbm92LnVubGltaXRlZEBnbWFpbC5jb20iLCJyb2xlIjoiUk9MRV9VU0VSIiwiaWQiOiIxIiwiaWF0IjoxNzcwOTgxMzQ4LCJleHAiOjE3NzA5ODQ5NDh9.7j3DCifjPpjr6rl4pGyaCc0KLRR5eRaT06YuqNoV9u3XPrAe9AMf0m0TjtvUL1sN0MYPal4UC23WKunydO6LDw
+
+{
+  "username":"madaminovjamshid265@gmail.com"
+}
+
+
+
+
+###name update qilish
+PUT localhost:8080//profile/username/confirm
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYWRhbWlub3ZqYW1zaGlkMjY1QGdtYWlsLmNvbSIsInJvbGUiOiJST0xFX1VTRVIiLCJpZCI6IjEiLCJpYXQiOjE3NzA5ODI4MzMsImV4cCI6MTc3MDk4NjQzM30.XjWtILbJioMvEnLocbTXfabzwnFJP0oAuy_IHgTQR3xKEPfhu8VJSoFmDDCnpRxi-cq4dBoesz-qWb_b3rK2Jg
+
+{
+  "code":"40441"
+}
+
+

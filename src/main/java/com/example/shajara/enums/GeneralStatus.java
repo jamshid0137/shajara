@@ -1,0 +1,9 @@
+package com.example.shajara.enums;
+
+
+public enum GeneralStatus {
+    ACTIVE,BLOCK,IN_REGISTRATION
+}
+/*
+IN_REGISTRATION EMAIL KODIMI SMS KODIMI TASDIQLAMAGAN REGISTRATSIYADA HALI
+ */

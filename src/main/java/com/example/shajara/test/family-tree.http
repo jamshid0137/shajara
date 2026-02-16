@@ -1,0 +1,13 @@
+###
+POST localhost:8080//api/family-trees
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYWRhbWlub3ZqYW1zaGlkMjY1QGdtYWlsLmNvbSIsInJvbGUiOiJST0xFX1VTRVIiLCJpZCI6IjEiLCJpYXQiOjE3NzA5ODI4MzMsImV4cCI6MTc3MDk4NjQzM30.XjWtILbJioMvEnLocbTXfabzwnFJP0oAuy_IHgTQR3xKEPfhu8VJSoFmDDCnpRxi-cq4dBoesz-qWb_b3rK2Jg
+
+{
+  "name": "qarindoshlarim"
+}
+###
+GET localhost:8080//api/family-trees/1/persons
+
+###
+GET localhost:8080//api/family-trees/1

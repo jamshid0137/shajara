@@ -1,0 +1,104 @@
+
+###
+POST http://localhost:8080/api/persons/quick-create
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "targetId":56,
+  "type": "CHILD",
+  "direction": "BOTTOM_RIGHT",
+  "level": 2
+}
+
+###
+POST http://localhost:8080/api/persons/quick-create
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "targetId":56,
+  "type": "CHILD",
+  "direction": "BOTTOM_RIGHT",
+  "level": 2
+}
+
+
+
+###
+POST http://localhost:8080/api/persons/quick-create
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "targetId":1,
+  "type": "CHILD",
+  "direction": "BOTTOM_LEFT",
+  "level": 2
+}
+
+
+###
+POST http://localhost:8080/api/persons/quick-create
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "targetId":1,
+  "type": "CHILD",
+  "direction": "TOP_RIGHT",
+  "level": 2
+}
+
+###
+POST http://localhost:8080/api/persons/quick-create
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "targetId":1,
+  "type": "CHILD",
+  "direction": "TOP_LEFT",
+  "level": 2
+}
+
+
+
+###
+POST http://localhost:8080/api/persons/quick-create
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "targetId":1,
+  "type": "",
+  "direction": "",
+  "level": 2
+}
+
+
+
+
+
+###
+POST localhost:8080//api/persons
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "name": "Sardor",
+  "birthDate": "2004-05-31",
+  "profession": "developer"
+}
+
+
+###  "gender": "FEMALE"
+GET localhost:8080//api/persons/11/full
+Content-Type: application/json
+
+
+###
+POST localhost:8080//api/persons/11/add-parent?parentId=9
+Content-Type: application/json
+
+###

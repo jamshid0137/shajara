@@ -1,0 +1,50 @@
+###registration
+POST localhost:8080///auth/registration
+Content-Type: application/json
+
+{
+  "name":"Jamshid",
+  "username": "jmadaminov.unlimited@gmail.com",
+  "password": "1234567"
+}
+
+
+###registration
+POST localhost:8080///auth/registration
+Content-Type: application/json
+
+{
+  "name":"Jamshid",
+  "username": "998990650137",
+  "password": "1234567"
+}
+
+
+###login
+POST localhost:8080///auth/login
+Content-Type: application/json
+
+{
+  "username": "jmadaminov.unlimited@gmail.com",
+  "password": "654321"
+}
+
+
+###reset password
+POST localhost:8080///auth/reset-password
+Content-Type: application/json
+
+{
+  "username": "jmadaminov.unlimited@gmail.com"
+}
+
+
+###reset password confirmation 2 minutdan keyin yaroqsiz mail code
+POST localhost:8080///auth/reset-password-confirm
+Content-Type: application/json
+
+{
+  "username": "jmadaminov.unlimited@gmail.com",
+  "code": "91444",
+  "password": "654321"
+}

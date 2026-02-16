@@ -1,0 +1,14 @@
+###
+GET localhost:8080//api/family-trees/1/graph
+Content-Type: application/json
+
+
+###
+POST localhost:8080//api/relations
+Content-Type: application/json
+
+{
+  "fromPersonId": "3",
+  "toPersonId": "9",
+  "type": "SPOUSE"
+}

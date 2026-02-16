@@ -1,0 +1,169 @@
+###
+POST localhost:8080//api/persons
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYWRhbWlub3ZqYW1zaGlkMjY1QGdtYWlsLmNvbSIsInJvbGUiOiJST0xFX1VTRVIiLCJpZCI6IjEiLCJpYXQiOjE3NzA5ODI4MzMsImV4cCI6MTc3MDk4NjQzM30.XjWtILbJioMvEnLocbTXfabzwnFJP0oAuy_IHgTQR3xKEPfhu8VJSoFmDDCnpRxi-cq4dBoesz-qWb_b3rK2Jg
+
+
+{
+  "treeId": 3,
+  "name": "Farida"
+}
+
+
+
+###
+POST localhost:8080//api/persons
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "name": "Farida",
+  "spouseIds": [5]
+}
+
+
+
+###
+PUT localhost:8080//api/persons/6
+Content-Type: application/json
+
+{
+
+  "name": "Farida",
+  "gender": "FEMALE",
+  "birthDate": "1959-04-20",
+  "profession":"nurse"
+}
+
+
+
+
+###
+PUT localhost:8080//api/persons/5
+Content-Type: application/json
+
+{
+  "birthDate": "1956-08-20",
+  "profession":"doctor"
+}
+
+
+
+
+###
+POST localhost:8080//api/persons
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "name": "Sardorbek",
+  "parentIds": [5,6]
+}
+
+
+###
+POST localhost:8080//api/persons
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "name": "Iqbol"
+}
+
+
+###
+PUT localhost:8080//api/persons/8
+Content-Type: application/json
+
+{
+  "parentIds": [11,12]
+}
+
+
+
+
+
+###
+POST localhost:8080//api/persons
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "name": "Karimboy"
+}
+
+
+###
+POST localhost:8080//api/persons
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "name": "To'xtajon"
+}
+
+
+###
+PUT localhost:8080//api/persons/5
+Content-Type: application/json
+
+{
+  "spouseIds": [14]
+}
+
+
+###
+POST localhost:8080//api/persons
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "name": "Intizor",
+  "birthDate": "1975-05-24",
+  "profession": "ishsiz",
+  "parentIds": [11,12]
+}
+
+
+###===== "spouseIds": [10]
+PUT localhost:8080//api/persons/14
+Content-Type: application/json
+
+{
+  "parentIds": [13,57]
+
+}
+
+
+###
+POST localhost:8080//api/persons
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "name": "Aloxon",
+  "birthDate": "2005-02-13",
+  "profession": "talaba",
+  "parentIds": [13,14]
+}
+
+
+
+
+
+###
+POST localhost:8080//api/persons
+Content-Type: application/json
+
+{
+  "treeId": 1,
+  "name": "Azamat",
+  "birthDate": "1973-04-08",
+  "profession": "dehqon",
+  "spouseIds": [13]
+}
+
+
+###
+GET localhost:8080//api/persons/tree/1
+Content-Type: application/json
