@@ -6,6 +6,8 @@ import com.example.shajara.dto.relation.RelationResponseDto;
 import com.example.shajara.entity.Person;
 import com.example.shajara.entity.Relation;
 import com.example.shajara.enums.RelationType;
+import com.example.shajara.exception.AppBadException;
+import com.example.shajara.exception.NotFoundException;
 import com.example.shajara.repository.PersonRepository;
 import com.example.shajara.repository.RelationRepository;
 import com.example.shajara.service.RelationService;
@@ -30,18 +32,18 @@ public class RelationServiceImpl implements RelationService {
         Person to = getPerson(dto.getToPersonId());
 
         if(!from.getFamilyTree().getId().equals(to.getFamilyTree().getId())){
-            throw new RuntimeException("These people don't belong to one family tree !");
+            throw new AppBadException("These people don't belong to one family tree !");
         }
 
         if(from.getGender()==to.getGender()){
-            throw new RuntimeException("The same genders cannot marry !");
+            throw new AppBadException("The same genders cannot marry !");
         }
         if(dto.getType() != RelationType.SPOUSE){
-            throw new RuntimeException("Only SPOUSE relation allowed");
+            throw new AppBadException("Only SPOUSE relation allowed");
         }
         boolean qarindosh=qarindoshmasmi(from,to);
         if(qarindosh){
-            throw new RuntimeException("These people are relative with each !");
+            throw new AppBadException("These people are relative with each !");
         }
 
         Relation relation = Relation.builder()
@@ -57,16 +59,16 @@ public class RelationServiceImpl implements RelationService {
     @Override
     public RelationResponseDto update(Long id, RelationCreateDto dto) {
         Relation relation = relationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Relation not found"));
+                .orElseThrow(() -> new NotFoundException("Relation not found"));
 
         Person from = getPerson(dto.getFromPersonId());
         Person to = getPerson(dto.getToPersonId());
         if(qarindoshmasmi(from,to)){
-            throw new RuntimeException("These people already are relative !");
+            throw new AppBadException("These people already are relative !");
         }
 
         if(dto.getType() != RelationType.SPOUSE){
-            throw new RuntimeException("Only SPOUSE relation allowed");
+            throw new AppBadException("Only SPOUSE relation allowed");
         }
 
         relation.setFromPerson(from);
@@ -94,7 +96,7 @@ public class RelationServiceImpl implements RelationService {
     @Override
     public RelationResponseDto getById(Long id) {
         return toDto(relationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Relation not found")));
+                .orElseThrow(() -> new NotFoundException("Relation not found")));
     }
 
     @Override
@@ -121,7 +123,7 @@ public class RelationServiceImpl implements RelationService {
                 relationRepository.findSpouseRelationsBetween(personId1, personId2, RelationType.SPOUSE);
 
         if(relations.isEmpty()){
-            throw new RuntimeException("Spouse relation not found between persons");
+            throw new NotFoundException("Spouse relation not found between persons");
         }
 
         relations.forEach(r -> r.setDivorced(divorced));
@@ -131,7 +133,7 @@ public class RelationServiceImpl implements RelationService {
     // ================= HELPERS =================
     private Person getPerson(Long id){
         return personRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Person not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("Person not found with id: " + id));
     }
 
     private RelationResponseDto toDto(Relation r){

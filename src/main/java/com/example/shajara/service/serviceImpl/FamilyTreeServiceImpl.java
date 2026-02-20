@@ -6,16 +6,23 @@ import com.example.shajara.dto.person.PersonCreateDto;
 import com.example.shajara.dto.person.PersonResponseDto;
 import com.example.shajara.entity.FamilyTree;
 import com.example.shajara.entity.ProfileEntity;
+import com.example.shajara.enums.GeneralStatus;
 import com.example.shajara.exception.AppBadException;
+import com.example.shajara.exception.NotFoundException;
 import com.example.shajara.repository.FamilyTreeRepository;
 import com.example.shajara.repository.ProfileRepository;
 import com.example.shajara.service.FamilyTreeService;
 import com.example.shajara.service.PersonService;
+import com.example.shajara.service.email.EmailSendingService;
+import com.example.shajara.util.EmailUtil;
+import com.example.shajara.util.SmsUtil;
 import com.example.shajara.util.SpringSecurityUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -27,6 +34,8 @@ public class FamilyTreeServiceImpl implements FamilyTreeService {
 
     private final FamilyTreeRepository repository;
     private final PersonService personService;
+    @Autowired
+    private EmailSendingService emailSendingService;
 
     private final ProfileRepository profileRepository;
 
@@ -43,7 +52,7 @@ public class FamilyTreeServiceImpl implements FamilyTreeService {
         Integer id=SpringSecurityUtil.getCurrentUserId();
         Optional<ProfileEntity> profileEntity=profileRepository.findByIdAndVisibleTrue(id);
         if(profileEntity.isEmpty()){
-            throw new AppBadException("Profile yo'q !");
+            throw new NotFoundException("Profile yo'q !");
         }
         tree.setProfile(profileEntity.get());
         tree=repository.save(tree);
@@ -68,6 +77,15 @@ public class FamilyTreeServiceImpl implements FamilyTreeService {
                 .collect(Collectors.toList());
     }
 
+    public FamilyTreeDto getByIdForInvite(Long id) {
+
+        FamilyTree tree = repository
+                .findById(id)
+                .orElseThrow(() -> new NotFoundException("Tree not found"));
+
+        return toDto(tree);
+    }
+
     @Override
     public FamilyTreeDto getById(Long id) {
 
@@ -75,7 +93,7 @@ public class FamilyTreeServiceImpl implements FamilyTreeService {
 
         FamilyTree tree = repository
                 .findByIdAndProfileId(id, profileId)
-                .orElseThrow(() -> new AppBadException("Tree not found"));
+                .orElseThrow(() -> new NotFoundException("Tree not found"));
 
         return toDto(tree);
     }
@@ -86,7 +104,7 @@ public class FamilyTreeServiceImpl implements FamilyTreeService {
 
         FamilyTree tree = repository
                 .findByIdAndProfileId(id, profileId)
-                .orElseThrow(() -> new AppBadException("Tree not found"));
+                .orElseThrow(() -> new NotFoundException("Tree not found"));
 
         tree.setName(name);
 
@@ -100,7 +118,7 @@ public class FamilyTreeServiceImpl implements FamilyTreeService {
 
         FamilyTree tree = repository
                 .findByIdAndProfileId(id, profileId)
-                .orElseThrow(() -> new AppBadException("Tree not found"));
+                .orElseThrow(() -> new NotFoundException("Tree not found"));
 
         repository.delete(tree);
     }
@@ -118,5 +136,50 @@ public class FamilyTreeServiceImpl implements FamilyTreeService {
         return new FamilyTreeDto(tree.getId(), tree.getName(),tree.getLastPersonId(),tree.getProfile().getId());
     }
 
+
+
+
+    //new share function
+    @Override
+    @Transactional
+    public void inviteFamilyTreeToProfile(Long treeId, String username) {
+        Integer id=SpringSecurityUtil.getCurrentUserId();
+        ProfileEntity profileReal=profileRepository.findById(id).orElseThrow(()->new AppBadException("Sizni profilingiz topilmadi"));
+
+        if(SmsUtil.isPhone(username)){
+            throw new AppBadException("Sms provider ishlamayapti iltimos email orqali share qiling");
+        }else if(!EmailUtil.isEmail(username)){
+            throw new AppBadException("Username wrong !");
+        }
+
+        FamilyTree tree = repository.findById(treeId)
+                .orElseThrow(() -> new NotFoundException("FamilyTree not found"));
+
+        Optional<ProfileEntity> targetProfile = profileRepository.findByUsername(username);
+        if(targetProfile.isEmpty()){
+            //new yaratib inregist qilib unga qo'shamiza
+            ProfileEntity profile=new ProfileEntity();
+            profile.setUsername(username);
+            profile.setCreatedDate(LocalDateTime.now());
+            profile.getInvitedTreeIds().add(treeId);
+            profile.setStatus(GeneralStatus.IN_REGISTRATION);
+            profileRepository.save(profile);
+            System.out.println("ishladi registration");
+            emailSendingService.sendShareUsernameEmail(username,profileReal.getName(),tree.getName());
+            return;
+        }
+
+        if(id!=null && id.equals(targetProfile.get().getId())){
+            throw new AppBadException("O'zingga o'zing invite qila olmaysan !");
+        }
+
+        if (!targetProfile.get().getInvitedTreeIds().contains(tree.getId())) {
+            targetProfile.get().getInvitedTreeIds().add(tree.getId());
+        }
+        //sendShareUsernameEmail
+        emailSendingService.sendShareUsernameEmail(username,profileReal.getName(),tree.getName());
+
+        profileRepository.save(targetProfile.get());
+    }
 
 }

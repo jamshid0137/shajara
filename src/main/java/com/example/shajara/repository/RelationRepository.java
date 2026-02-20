@@ -82,4 +82,12 @@ SELECT r.id FROM relations r
 WHERE r.from_person_id=:personId OR r.to_person_id=:personId
 """, nativeQuery = true)
     List<Long> findForAllSpousesNativeRelationdIds(@Param("personId") Long personId);
+
+
+
+    // FamilyTree bo'yicha relationlarni olish
+    @Query("SELECT r FROM Relation r " +
+            "WHERE r.fromPerson.familyTree.id = :treeId " +
+            "   OR r.toPerson.familyTree.id = :treeId")
+    List<Relation> findByTreeId(@Param("treeId") Long treeId);
 }

@@ -56,6 +56,7 @@ public class SecurityConfig {
                     .requestMatchers(AUTH_WHITELIST).permitAll()
                     .anyRequest()
                     .authenticated();
+
         }).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         http.csrf(AbstractHttpConfigurer::disable); // csrf o'chirilgan
@@ -67,11 +68,12 @@ public class SecurityConfig {
 //            configuration.setAllowedHeaders(Arrays.asList("*"));
 
             //chatgpt
-            CorsConfiguration configuration = new CorsConfiguration();
+           CorsConfiguration configuration = new CorsConfiguration();
             configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000")); // yoki Flutter URL
             configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS"));
             configuration.setAllowedHeaders(Arrays.asList("Authorization","Content-Type"));
             configuration.setAllowCredentials(true);
+
 
 
             UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

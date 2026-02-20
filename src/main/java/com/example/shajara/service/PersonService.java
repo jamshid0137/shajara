@@ -1,10 +1,16 @@
 package com.example.shajara.service;
 
+import com.example.shajara.dto.person.PersonAddParentDto;
 import com.example.shajara.dto.person.*;
+import com.example.shajara.entity.Person;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
 public interface PersonService {
+    PersonAddChildResponseDto addChild(PersonAddChildDto dto);
+    PersonAddSpouseDto addSpouse(Long id);
+    PersonAddParentDto addParents(Long id);
 
     PersonResponseDto create(PersonCreateDto dto);
 
@@ -24,4 +30,8 @@ public interface PersonService {
     PersonResponseDto addParent(Long childId, Long parentId);
 
 
+    PersonResponseDto updatePhoto(Long personId, MultipartFile photo);
+
+    //String getPersonPhotoSignedUrl(Person person);
+    Person find(Long id);
 }

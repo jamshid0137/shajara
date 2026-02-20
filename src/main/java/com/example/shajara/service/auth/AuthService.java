@@ -66,13 +66,35 @@ public class AuthService {
     public AppResponse<String> registration(RegistrationDTO dto){
         //1.validation buni keyin tekshiramiz
         //2.email bor yo'qligi tizimda
+        //inregist bo'lgan bo'lsa shartmanda
         Optional<ProfileEntity>optional=profileRepository.findByUsernameAndVisibleTrue(dto.getUsername());
         if(optional.isPresent()){
             ProfileEntity profile= optional.get();
-            if(profile.getStatus().equals(GeneralStatus.IN_REGISTRATION)){
+            if(profile.getStatus().equals(GeneralStatus.IN_REGISTRATION)){   //menga id kerakda shunga o'chirib yubormadim
                 profileRoleService.deleteRoll(profile.getId());
-                profileRepository.delete(profile);
+
                 //send sms/email
+                ProfileEntity entity=optional.get();
+                entity.setName(dto.getName());
+                entity.setPassword(bc.encode(dto.getPassword()));
+                entity.setUsername(dto.getUsername());
+                entity.setStatus(GeneralStatus.IN_REGISTRATION);
+                entity.setVisible(true);
+                entity.setCreatedDate(LocalDateTime.now());
+                profileRepository.save(entity);//save
+                //insert role
+                profileRoleService.create(entity.getId(), ProfileRole.ROLE_USER);
+                if(EmailUtil.isEmail(dto.getUsername())){
+                    emailSendingService.sendRegistrationEmail(dto.getUsername(),entity.getId());}
+                else if(SmsUtil.isPhone(dto.getUsername())) {
+                    //todo
+                    throw new AppBadException("Sms provider ishlamayapti.Email orqali registratsiya qiling !");
+                    //smsSendingService.registrationSms(dto.getUsername());
+                }else{
+                    throw new AppBadException("wrong username !");
+                }
+                return new AppResponse<>("Activation link send to your email");
+
             }
             else {
                 log.warn("Profile already exist with username : {}",dto.getUsername());
@@ -127,13 +149,15 @@ public class AuthService {
             log.warn(" username wrong : {}",dto.getUsername());
             throw new AppBadException("Username is wrong");
         }
-        if(! bc.matches(dto.getPassword(), optional.get().getPassword())){//matches bcrypda tenglika tekshiriberadi.
-            throw new AppBadException("Password is wrong");
-        }
         if(! optional.get().getStatus().equals(GeneralStatus.ACTIVE)){
             log.warn("Wrong status  ");//xuddi shunaqa qolgan joylarda ham yozib chiqiladi
             throw new AppBadException("Status is wrong !");
         }
+
+        if(! bc.matches(dto.getPassword(), optional.get().getPassword())){//matches bcrypda tenglika tekshiriberadi.
+            throw new AppBadException("Password is wrong");
+        }
+
 
         ProfileEntity profile=optional.get();
         //response

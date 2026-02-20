@@ -1,6 +1,7 @@
 package com.example.shajara.controller;
 
 
+import com.example.shajara.dto.AppResponse;
 import com.example.shajara.dto.FamilyTreeDto;
 import com.example.shajara.dto.person.PersonSimpleDto;
 import com.example.shajara.service.FamilyTreeService;
@@ -52,6 +53,17 @@ public class FamilyTreeController {
     @GetMapping("/{treeId}/persons")
     public List<PersonSimpleDto> getTreePersons(@PathVariable Long treeId) {
         return personService.getTreePersons(treeId);
+    }
+
+
+    // --- Yangi: Invite tree boshqa profillarga jo'natish ---
+    @PostMapping("/invited/send")
+    public ResponseEntity<AppResponse<String>> inviteFamilyTreeToProfile(
+            @RequestParam("treeId") Long treeId,
+            @RequestParam("username") String username) {
+
+        service.inviteFamilyTreeToProfile(treeId, username);
+        return ResponseEntity.ok(new AppResponse<>("Tree muvaffaqiyatli invite qilindi!"));
     }
 
 }

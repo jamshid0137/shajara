@@ -83,10 +83,11 @@ Content-Type: application/json
 ###
 POST localhost:8080//api/persons
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqbWFkYW1pbm92LnVubGltaXRlZEBnbWFpbC5jb20iLCJyb2xlIjoiUk9MRV9VU0VSIiwiaWQiOiIxIiwiaWF0IjoxNzcxMzI5NjAxLCJleHAiOjE3NzE1MDI0MDF9.T4O9JKqIqUMzIgtis9qIa2a92XfnamIJYMEzCA4BnGvxH7BfKvpsYLTSeADf3nBZbdKz1u8OrHSTbsPeQLO2Aw
 
 {
   "treeId": 1,
-  "name": "Sardor",
+  "name": "jamshid",
   "birthDate": "2004-05-31",
   "profession": "developer"
 }
@@ -102,3 +103,24 @@ POST localhost:8080//api/persons/11/add-parent?parentId=9
 Content-Type: application/json
 
 ###
+
+
+
+###
+DELETE http://localhost:8080/api/persons/4
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYWRhbWlub3ZqYW1zaGlkMjY1QGdtYWlsLmNvbSIsInJvbGUiOiJST0xFX1VTRVIiLCJpZCI6IjQiLCJpYXQiOjE3NzE0MDg2NDUsImV4cCI6MTc3MTU4MTQ0NX0.CpUfHL6pKDKK0yzVNCPiqQP-VoT3A9z7SEWNcGgJI4GF4G2aCMzkzatBE7b-tT_vth4FFG6i9rrdYEHheXb92A
+
+
+
+
+
+
+
+
+
+
+
+
+
+

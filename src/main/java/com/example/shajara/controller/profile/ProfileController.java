@@ -55,4 +55,21 @@ public class ProfileController {
         ProfileDTO profileDTO = profileService.getProfileDetail(currentProfileId);
         return ResponseEntity.ok(profileDTO);
     }
+
+
+
+
+    // Invited tree qabul qilish
+    @PostMapping("/invited/accept/{treeId}")
+    public ResponseEntity<AppResponse<String>> acceptInvitedTree(@PathVariable("treeId") Long treeId) {
+        AppResponse<String> response = profileService.acceptInvitedTree(treeId);
+        return ResponseEntity.ok(response);
+    }
+
+    // Invited tree ni o'z xohishiga ko'ra o'chirish
+    @DeleteMapping("/invited/remove/{treeId}")
+    public ResponseEntity<AppResponse<String>> removeInvitedTree(@PathVariable("treeId") Long treeId) {
+        AppResponse<String> response = profileService.removeInvitedTree(treeId);
+        return ResponseEntity.ok(response);
+    }
 }

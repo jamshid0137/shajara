@@ -18,4 +18,7 @@ public interface FamilyTreeService {
     void delete(Long id);
 
     List<FamilyTreeDto> getAllByProfileId(Integer profileId);
+
+    void inviteFamilyTreeToProfile(Long treeId, String username);
+    FamilyTreeDto getByIdForInvite(Long id);
 }

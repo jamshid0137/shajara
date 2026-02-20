@@ -23,4 +23,9 @@ public class ProfileDTO {
 
     //BU JOYIDA HAM FAMILY TREELARINI QO'SHIB KETISHIM KERAK //TODO
     private List<FamilyTreeDto> familyTrees;
+
+    //todo manashu joyida invite-treelarni ham berib yuborishimiza kerak
+    private List<PartFamilyTreeDto> invitedTrees;
+
+
 }

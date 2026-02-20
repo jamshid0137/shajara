@@ -1,13 +1,14 @@
 ###
 POST localhost:8080//api/family-trees
 Content-Type: application/json
-Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYWRhbWlub3ZqYW1zaGlkMjY1QGdtYWlsLmNvbSIsInJvbGUiOiJST0xFX1VTRVIiLCJpZCI6IjEiLCJpYXQiOjE3NzA5ODI4MzMsImV4cCI6MTc3MDk4NjQzM30.XjWtILbJioMvEnLocbTXfabzwnFJP0oAuy_IHgTQR3xKEPfhu8VJSoFmDDCnpRxi-cq4dBoesz-qWb_b3rK2Jg
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJtYWRhbWlub3ZqYW1zaGlkMjY1QGdtYWlsLmNvbSIsInJvbGUiOiJST0xFX1VTRVIiLCJpZCI6IjQiLCJpYXQiOjE3NzE0MDg2NDUsImV4cCI6MTc3MTU4MTQ0NX0.CpUfHL6pKDKK0yzVNCPiqQP-VoT3A9z7SEWNcGgJI4GF4G2aCMzkzatBE7b-tT_vth4FFG6i9rrdYEHheXb92A
 
 {
-  "name": "qarindoshlarim"
+  "name": "testga"
 }
 ###
 GET localhost:8080//api/family-trees/1/persons
 
 ###
-GET localhost:8080//api/family-trees/1
+POST localhost:8080//api/family-trees//invited/send?treeId=1&username=madaminovjamshid265@gmail.com
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqbWFkYW1pbm92LnVubGltaXRlZEBnbWFpbC5jb20iLCJyb2xlIjoiUk9MRV9VU0VSIiwiaWQiOiIxIiwiaWF0IjoxNzcxNDE4MTM5LCJleHAiOjE3NzE1OTA5Mzl9.3IFQKk-BCFcYTkVqmIZLe_5u4xvYP7w2vSxphZgry2UiXwK0bwsUK-VJ9peMuIvvfMjo2J0mvXV7AaelHuub4A

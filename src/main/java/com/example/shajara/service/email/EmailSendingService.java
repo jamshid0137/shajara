@@ -23,7 +23,6 @@ public class EmailSendingService {
     private String fromAccount;//email usernameni olvolish.
     @Value("${server.domain}")
     private String serverDomain;
-
     @Autowired
     private JavaMailSender javaMailSender;
 
@@ -125,6 +124,15 @@ public class EmailSendingService {
 
         checkAndSendRegistrationEmail(email,title,body,code);
     }
+
+    public void sendShareUsernameEmail(String email,String name,String treeName){
+        String title="Invite you special family tree";
+        String code= String.valueOf(name);
+        String body=code+"dan sizga : "+treeName+" nomli familytree jo'natildi !";
+
+        checkAndSendRegistrationEmail(email,title,body,code);
+    }
+
 
     public void checkAndSendRegistrationEmail(String email,String title,String body,String code){
         //checking

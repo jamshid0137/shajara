@@ -1,6 +1,7 @@
 package com.example.shajara.repository;
 
 import com.example.shajara.entity.FamilyTree;
+import com.example.shajara.entity.ProfileEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -12,4 +13,6 @@ public interface FamilyTreeRepository extends JpaRepository<FamilyTree, Long> {
     List<FamilyTree> findByProfileId(Integer profileId);
 
     Optional<FamilyTree> findByIdAndProfileId(Long id, Integer profileId);
+
+
 }

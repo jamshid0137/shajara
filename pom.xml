@@ -108,6 +108,16 @@
             <version>2.7.0</version>
         </dependency>
 
+        <!-- AWS SDK S3 (v2) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.20.0</version>
+        </dependency>
+
+
+
+
     </dependencies>
 
     <build>

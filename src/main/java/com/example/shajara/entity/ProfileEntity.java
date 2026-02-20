@@ -51,4 +51,9 @@ public class ProfileEntity {
     private List<FamilyTree> familyTrees = new ArrayList<>();
 
 
+    // 🔹 Yangi field: invited tree IDs
+    @ElementCollection
+    @CollectionTable(name = "profile_invited_trees", joinColumns = @JoinColumn(name = "profile_id"))
+    @Column(name = "tree_id")
+    private List<Long> invitedTreeIds = new ArrayList<>();
 }

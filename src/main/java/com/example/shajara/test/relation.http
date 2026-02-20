@@ -6,9 +6,10 @@ Content-Type: application/json
 ###
 POST localhost:8080//api/relations
 Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJqbWFkYW1pbm92LnVubGltaXRlZEBnbWFpbC5jb20iLCJyb2xlIjoiUk9MRV9VU0VSIiwiaWQiOiIxIiwiaWF0IjoxNzcxMzI5NjAxLCJleHAiOjE3NzE1MDI0MDF9.T4O9JKqIqUMzIgtis9qIa2a92XfnamIJYMEzCA4BnGvxH7BfKvpsYLTSeADf3nBZbdKz1u8OrHSTbsPeQLO2Aw
 
 {
-  "fromPersonId": "3",
-  "toPersonId": "9",
+  "fromPersonId": "4",
+  "toPersonId": "3",
   "type": "SPOUSE"
 }

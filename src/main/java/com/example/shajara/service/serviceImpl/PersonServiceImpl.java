@@ -1,9 +1,12 @@
 package com.example.shajara.service.serviceImpl;
 
+//import com.example.shajara.config.S3SignedUrlService;
+import com.example.shajara.dto.person.PersonAddParentDto;
 import com.example.shajara.dto.person.*;
 import com.example.shajara.entity.FamilyTree;
 import com.example.shajara.entity.Person;
 import com.example.shajara.enums.Gender;
+import com.example.shajara.exception.AppBadException;
 import com.example.shajara.exception.NotFoundException;
 import com.example.shajara.repository.FamilyTreeRepository;
 import com.example.shajara.repository.PersonRepository;
@@ -13,7 +16,13 @@ import com.example.shajara.service.RelationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -25,11 +34,80 @@ public class PersonServiceImpl implements PersonService {
     private final RelationService relationService;
     private final RelationRepository relationRepository;
 
+    private final S3Client s3Client; //todo
+
+//    private final S3SignedUrlService s3SignedUrlService;
+//
+//    public String getPersonPhotoSignedUrl(Person person) {
+//        if(person.getPhotoUrl() == null) return null;
+//
+//        String bucketName = "shajara-person-photos";
+//        // URLdan keyni olish
+//        String key = person.getPhotoUrl().substring(person.getPhotoUrl().lastIndexOf("/") + 1);
+//
+//        // 60 daqiqa amal qiladigan URL
+//        return s3SignedUrlService.generateSignedUrl(bucketName, key, 60);
+//    }
+
+
+    @Override
+    public PersonAddChildResponseDto addChild(PersonAddChildDto dto) {
+        Person parent = personRepository.findById(dto.getId())
+                .orElseThrow(() -> new NotFoundException("person not found"));
+        Person child = new Person();
+        child.setGender(dto.getChildGender());
+        child.setName("child");
+        child = personRepository.save(child);
+        return new PersonAddChildResponseDto(parent.getId(),child.getId());
+    }
+
+    @Override
+    @Transactional
+    public PersonAddSpouseDto addSpouse(Long id) {
+        Person eri = personRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("person not found"));
+        Person spouse = new Person();
+        if(eri.getGender()==Gender.FEMALE)spouse.setGender(Gender.MALE);
+        if(eri.getGender()==Gender.MALE)spouse.setGender(Gender.FEMALE);
+        spouse.setName("spouse");
+        spouse = personRepository.save(spouse);
+        return new PersonAddSpouseDto(id, spouse.getId());
+    }
+
+    @Override
+    @Transactional
+    public PersonAddParentDto addParents(Long id) {
+        Person child = personRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("person not found"));
+        if(child.getFatherId()!=null && child.getFatherId()!=0
+                && child.getMotherId()!=null && child.getMotherId()!=0
+        ){
+            throw new AppBadException("Allaqachon otasiham  onasiham bor !");
+        }
+        if(child.getFatherId()==null || child.getFatherId()==0) {
+            Person father = new Person();
+            father.setGender(Gender.MALE);
+            father.setName("Father");
+            father = personRepository.save(father);
+            child.setFatherId(father.getId());
+        }
+        if(child.getMotherId()==null || child.getMotherId()==0) {
+            Person mother = new Person();
+            mother.setGender(Gender.FEMALE);
+            mother.setName("Mother");
+            mother = personRepository.save(mother);
+            child.setMotherId(mother.getId());
+        }
+
+        personRepository.save(child);
+        return new PersonAddParentDto(id, child.getFatherId(), child.getMotherId());
+    }
+
     @Override
     public PersonResponseDto create(PersonCreateDto dto) {
 
         FamilyTree tree = familyTreeRepository.findById(dto.getTreeId())
-                .orElseThrow(() -> new RuntimeException("Family tree not found"));
+                .orElseThrow(() -> new NotFoundException("Family tree not found"));
 
         Person person = Person.builder()
                 .name(dto.getName())
@@ -46,6 +124,19 @@ public class PersonServiceImpl implements PersonService {
                 .build();
 
         person = personRepository.save(person);
+
+
+        // ===== S3 ga rasm yuklash =====
+        // ===== Gender bo'yicha default rasm qo'yish =====
+        String bucketName = "shajara-person-photos";
+        if (person.getGender() == Gender.MALE) {
+            person.setPhotoUrl("https://" + bucketName + ".s3.us-east-1.amazonaws.com/default-male.png");
+        } else {
+            person.setPhotoUrl("https://" + bucketName + ".s3.us-east-1.amazonaws.com/default-female.jpg");
+        }
+
+        personRepository.save(person);
+
 
         return toDto(person);
     }
@@ -86,36 +177,36 @@ public class PersonServiceImpl implements PersonService {
 
         if(dto.getFatherId()!=null && dto.getFatherId()!=0){
             Person newFather=personRepository.findById(dto.getFatherId())
-                    .orElseThrow(() -> new RuntimeException("new father id not found"));
+                    .orElseThrow(() -> new NotFoundException("new father id not found"));
 
             if(!person.getFamilyTree().getId().equals(newFather.getFamilyTree().getId())){
-                throw new RuntimeException("These people don't belong to one family tree !");
+                throw new AppBadException("These people don't belong to one family tree !");
             }
 
             boolean qarindoshmasmi=qarindoshmasmi(person,newFather);
             if(qarindoshmasmi){
-                throw new RuntimeException("These people are relative !");
+                throw new AppBadException("These people are relative !");
             }
             if(newFather.getGender()==Gender.FEMALE){
-                throw new RuntimeException("Father must be MALE !");
+                throw new AppBadException("Father must be MALE !");
             }
             person.setFatherId(dto.getFatherId());
         }
 
         if(dto.getMotherId()!=null && dto.getMotherId()!=0){
             Person newMother=personRepository.findById(dto.getMotherId())
-                    .orElseThrow(() -> new RuntimeException("New mother id not found"));;
+                    .orElseThrow(() -> new NotFoundException("New mother id not found"));;
 
             if(!person.getFamilyTree().getId().equals(newMother.getFamilyTree().getId())){
-                throw new RuntimeException("These people don't belong to one family tree !");
+                throw new AppBadException("These people don't belong to one family tree !");
             }
 
             boolean qarindoshmasmi=qarindoshmasmi(person,newMother);
             if(qarindoshmasmi){
-                throw new RuntimeException("These people are relative !");
+                throw new AppBadException("These people are relative !");
             }
             if(newMother.getGender()==Gender.MALE){
-                throw new RuntimeException("Mother must be FEMALE !");
+                throw new AppBadException("Mother must be FEMALE !");
             }
             person.setMotherId(dto.getMotherId());
         }
@@ -125,6 +216,30 @@ public class PersonServiceImpl implements PersonService {
 
     @Override
     public void delete(Long id) {
+
+        //rasmi uchun bazadan o'chirib yuborish
+        Person person = find(id);
+
+        String bucketName = "shajara-person-photos";
+
+        // 1️⃣ Oldingi rasmni o'chirish (agar default emas bo'lsa)
+        if (person.getPhotoUrl() != null &&
+                !person.getPhotoUrl().contains("default-male") &&
+                !person.getPhotoUrl().contains("default-female")) {
+
+            String oldKey = person.getPhotoUrl().substring(person.getPhotoUrl().lastIndexOf("/") + 1);
+
+            try {
+                s3Client.deleteObject(builder -> builder.bucket(bucketName).key(oldKey));
+            } catch (Exception e) {
+                e.printStackTrace();
+                // Agar delete muvaffaqiyatsiz bo'lsa ham davom etamiz
+            }
+        }
+
+        //
+
+
         //birinchi manashu inson bilan bog'liq relationlarni o'chirib chiqishimiza kerakda !
         List<Long>relations=relationService.findForAllSpousesNativeRelationdIds(id);
         for(Long i:relations){
@@ -140,9 +255,9 @@ public class PersonServiceImpl implements PersonService {
         personRepository.delete(find(id));
     }
 
-    private Person find(Long id) {
+    public Person find(Long id) {
         return personRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Person not found"));
+                .orElseThrow(() -> new NotFoundException("Person not found"));
     }
 
     private PersonResponseDto toDto(Person p) {
@@ -158,6 +273,7 @@ public class PersonServiceImpl implements PersonService {
                 .fatherId(p.getFatherId())
                 .motherId(p.getMotherId())
                 .treeId(p.getFamilyTree().getId())
+                .photoUrl(p.getPhotoUrl())  //todo
                 .build();
     }
 
@@ -175,29 +291,29 @@ public PersonResponseDto addParent(Long childId, Long parentId) {
 
 
     if(!child.getFamilyTree().getId().equals(parent.getFamilyTree().getId())){
-        throw new RuntimeException("These people don't belong to one family tree !");
+        throw new AppBadException("These people don't belong to one family tree !");
     }
 
     boolean qarindoshmasmi=qarindoshmasmi(child,parent);
     if(qarindoshmasmi){
-        throw new RuntimeException("These people are relative !");
+        throw new AppBadException("These people are relative !");
     }
 
     // 2️⃣ Parentning genderiga qarab fatherId yoki motherId belgilash
     if (parent.getGender() == Gender.MALE) {
         // Agar childda oldin father mavjud bo‘lsa xatolik
         if (child.getFatherId() != null && child.getFatherId()!=0) {
-            throw new RuntimeException("Child already has a father!");
+            throw new AppBadException("Child already has a father!");
         }
         child.setFatherId(parent.getId());
     } else if (parent.getGender() == Gender.FEMALE) {
         // Agar childda oldin mother mavjud bo‘lsa xatolik
         if (child.getMotherId() != null && child.getMotherId()!=0) {
-            throw new RuntimeException("Child already has a mother!");
+            throw new AppBadException("Child already has a mother!");
         }
         child.setMotherId(parent.getId());
     } else {
-        throw new RuntimeException("Parent gender is undefined!");
+        throw new AppBadException("Parent gender is undefined!");
     }
 
     // 3️⃣ Childni saqlash
@@ -232,7 +348,7 @@ public PersonResponseDto addParent(Long childId, Long parentId) {
         // Person bilan barcha relationlarini olish
         public PersonResponseFullDto getPersonWithRelations(Long personId) {
             Person person = personRepository.findById(personId)
-                    .orElseThrow(() -> new RuntimeException("Person not found"));
+                    .orElseThrow(() -> new NotFoundException("Person not found"));
 
 
 
@@ -291,6 +407,7 @@ public PersonResponseDto addParent(Long childId, Long parentId) {
             dto.setFatherId(p.getFatherId());
             dto.setMotherId(p.getMotherId());
             dto.setTreeId(p.getFamilyTree().getId());
+            dto.setPhotoUrl(p.getPhotoUrl());
 
             return dto;
         }
@@ -310,6 +427,7 @@ public PersonResponseDto addParent(Long childId, Long parentId) {
             dto.setTreeId(p.getFamilyTree().getId());
             dto.setFatherId(p.getFatherId());
             dto.setMotherId(p.getMotherId());
+            dto.setPhotoUrl(p.getPhotoUrl());
 
             return dto;
         }
@@ -326,4 +444,66 @@ public PersonResponseDto addParent(Long childId, Long parentId) {
                         .build())
                 .toList();
     }
+
+
+
+
+
+    //new todo
+    @Override
+    @Transactional
+    public PersonResponseDto updatePhoto(Long personId, MultipartFile photo) {
+        if (photo == null || photo.isEmpty()) {
+            throw new AppBadException("Photo file is empty");
+        }
+
+        Person person = personRepository.findById(personId)
+                .orElseThrow(() -> new NotFoundException("Person not found"));
+
+        String bucketName = "shajara-person-photos";
+
+        // Oldingi rasmni tekshirish va o'chirish (agar default emas bo'lsa)
+        if (person.getPhotoUrl() != null &&
+                !person.getPhotoUrl().contains("default-male") &&
+                !person.getPhotoUrl().contains("default-female")) {
+
+            // Oldingi fayl nomini URL'dan olish
+            //https://shajara-person-photos.s3.us-east-1.amazonaws.com/person_12.jpg bo'lsa person_12.jpg ni qirqib olish
+
+            String oldKey = person.getPhotoUrl().substring(person.getPhotoUrl().lastIndexOf("/") + 1);
+
+            try {
+                s3Client.deleteObject(builder -> builder.bucket(bucketName).key(oldKey));
+            } catch (Exception e) {
+                e.printStackTrace();
+                // Agar delete muvaffaqiyatsiz bo'lsa ham davom etamiz
+            }
+        }
+
+        // Yangi rasmni S3 ga yuklash
+        String fileExtension = photo.getOriginalFilename().substring(photo.getOriginalFilename().lastIndexOf("."));
+        String timestamp = UUID.randomUUID().toString();
+        String newFileName = "person_" + person.getId() + timestamp + fileExtension;
+
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucketName)
+                .key(newFileName)
+                .contentType(photo.getContentType())
+                .build();
+
+        try {
+            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(photo.getInputStream(), photo.getSize()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new AppBadException("Failed to upload photo to S3");
+        }
+
+        // Bazaga yangi URL saqlash
+        String fileUrl = "https://" + bucketName + ".s3.us-east-1.amazonaws.com/" + newFileName;
+        person.setPhotoUrl(fileUrl);
+        personRepository.save(person);
+
+        return toDto(person);
+    }
+
 }

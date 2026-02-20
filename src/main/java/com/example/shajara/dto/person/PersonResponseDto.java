@@ -29,4 +29,7 @@ public class PersonResponseDto {
     private Long fatherId;
     private Long motherId;
 
+    // ✅ Photo URL qo'shildi
+    private String photoUrl;
+
 }

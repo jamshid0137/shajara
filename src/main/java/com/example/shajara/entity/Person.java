@@ -45,6 +45,9 @@ public class Person {
     private Long fatherId;
     private Long motherId;
 
+    @Column(name = "photo_url")
+    private String photoUrl;
+
 
     @Override
     public boolean equals(Object o) {
