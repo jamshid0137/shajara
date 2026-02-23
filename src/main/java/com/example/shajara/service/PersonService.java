@@ -9,8 +9,10 @@ import java.util.List;
 
 public interface PersonService {
     PersonAddChildResponseDto addChild(PersonAddChildDto dto);
-    PersonAddSpouseDto addSpouse(Long id);
-    PersonAddParentDto addParents(Long id);
+    //PersonAddSpouseDto addSpouse2(PersonAddSpouseCreateDto id);
+
+    PersonAddSpouseDto addSpouse(PersonAddSpouseCreateDto dto);
+    PersonAddParentDto addParents(PersonAddParentDto dto);
 
     PersonResponseDto create(PersonCreateDto dto);
 

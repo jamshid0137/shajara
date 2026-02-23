@@ -10,4 +10,5 @@ import lombok.*;
 public class PersonAddChildResponseDto {
     private Long id;
     private Long newChildId;
+    private Long treeId;
 }

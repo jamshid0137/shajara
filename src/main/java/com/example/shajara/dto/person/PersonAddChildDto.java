@@ -11,4 +11,5 @@ import lombok.*;
 public class PersonAddChildDto {
     private Long id;
     private Gender childGender;
+    private Long treeId;
 }

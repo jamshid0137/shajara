@@ -54,20 +54,20 @@ public class PersonController {
     }
 
 
-    @PostMapping("/{childId}/add-parent")
+    @PostMapping("/add-parent")
     public ResponseEntity<PersonAddParentDto> addParent(
-            @PathVariable Long childId
+            @RequestBody PersonAddParentDto dto
     ) {
         //PersonResponseDto updatedChild = personService.addParent(childId, parentId);
-        PersonAddParentDto updatedChild=personService.addParents(childId);
+        PersonAddParentDto updatedChild=personService.addParents(dto);
         return ResponseEntity.ok(updatedChild);
     }
 
-    @PostMapping("/{id}/add-spouse")
+    @PostMapping("/add-spouse")
     public ResponseEntity<PersonAddSpouseDto> addSpouse(
-            @PathVariable Long id
+            @RequestBody PersonAddSpouseCreateDto dto
     ) {
-        PersonAddSpouseDto updated=personService.addSpouse(id);
+        PersonAddSpouseDto updated=personService.addSpouse(dto);
         return ResponseEntity.ok(updated);
     }
 

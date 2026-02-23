@@ -7,8 +7,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class PersonAddSpouseDto {
+public class PersonAddSpouseCreateDto {
     private Long id;
-    private Long newSpouseId;
     private Long treeId;
 }

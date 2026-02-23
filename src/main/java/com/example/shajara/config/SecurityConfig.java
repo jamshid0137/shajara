@@ -40,9 +40,9 @@ public class SecurityConfig {
         // authentication - Foydalanuvchining identifikatsiya qilish.
         // Ya'ni berilgan login va parolli user bor yoki yo'qligini aniqlash.
 
-
-        final DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider(customUserDetailsService);
-        //authenticationProvider.setUserDetailsService(customUserDetailsService);
+        final DaoAuthenticationProvider authenticationProvider = new DaoAuthenticationProvider(
+                customUserDetailsService);
+        // authenticationProvider.setUserDetailsService(customUserDetailsService);
         authenticationProvider.setPasswordEncoder(bCryptPasswordEncoder());
         return authenticationProvider;
     }
@@ -50,7 +50,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         // authorization - Foydalanuvchining tizimdagi huquqlarini tekshirish.
-        // Ya'ni foydalanuvchi murojat qilayotgan API-larni ishlatishga ruxsati bor yoki yo'qligini tekshirishdir.
+        // Ya'ni foydalanuvchi murojat qilayotgan API-larni ishlatishga ruxsati bor yoki
+        // yo'qligini tekshirishdir.
         http.authorizeHttpRequests(authorizationManagerRequestMatcherRegistry -> {
             authorizationManagerRequestMatcherRegistry
                     .requestMatchers(AUTH_WHITELIST).permitAll()
@@ -60,21 +61,19 @@ public class SecurityConfig {
         }).addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         http.csrf(AbstractHttpConfigurer::disable); // csrf o'chirilgan
-        http.cors(httpSecurityCorsConfigurer -> { //hohlagan domendan bizni apilarga murojat qilish mumkin
-            //Coursedagi
-//            CorsConfiguration configuration = new CorsConfiguration();
-//            configuration.setAllowedOriginPatterns(Arrays.asList("*"));
-//            configuration.setAllowedMethods(Arrays.asList("*"));
-//            configuration.setAllowedHeaders(Arrays.asList("*"));
+        http.cors(httpSecurityCorsConfigurer -> { // hohlagan domendan bizni apilarga murojat qilish mumkin
+            // Coursedagi
+            // CorsConfiguration configuration = new CorsConfiguration();
+            // configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+            // configuration.setAllowedMethods(Arrays.asList("*"));
+            // configuration.setAllowedHeaders(Arrays.asList("*"));
 
-            //chatgpt
-           CorsConfiguration configuration = new CorsConfiguration();
+            // chatgpt
+            CorsConfiguration configuration = new CorsConfiguration();
             configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000")); // yoki Flutter URL
-            configuration.setAllowedMethods(Arrays.asList("GET","POST","PUT","DELETE","OPTIONS"));
-            configuration.setAllowedHeaders(Arrays.asList("Authorization","Content-Type"));
+            configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+            configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
             configuration.setAllowCredentials(true);
-
-
 
             UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
             source.registerCorsConfiguration("/**", configuration);
@@ -85,8 +84,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public BCryptPasswordEncoder bCryptPasswordEncoder(){
-        return  new BCryptPasswordEncoder();
+    public BCryptPasswordEncoder bCryptPasswordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 
 }
