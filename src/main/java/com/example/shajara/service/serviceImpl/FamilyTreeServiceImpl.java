@@ -164,7 +164,7 @@ public class FamilyTreeServiceImpl implements FamilyTreeService {
             profile.getInvitedTreeIds().add(treeId);
             profile.setStatus(GeneralStatus.IN_REGISTRATION);
             profileRepository.save(profile);
-            System.out.println("ishladi registration");
+
             emailSendingService.sendShareUsernameEmail(username,profileReal.getName(),tree.getName());
             return;
         }

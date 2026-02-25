@@ -101,7 +101,7 @@ public class PersonServiceImpl implements PersonService {
 
     @Override
     @Transactional
-    public PersonAddParentDto addParents(PersonAddParentDto dto) {
+    public PersonAddParentDto addParents(PersonAddParentDto dto) { // todo relation yo'q
         Person child = personRepository.findById(dto.getId())
                 .orElseThrow(() -> new NotFoundException("person not found"));
         if (child.getFatherId() != null && child.getFatherId() != 0
@@ -440,9 +440,10 @@ public class PersonServiceImpl implements PersonService {
         }
 
         // MANASHU JOYIDA BIZ TREENI LATEST PERSONINI UPDATE QILAMIZA
-        person.getFamilyTree().setLastPersonId(person.getId());
-
-        // familyTreeRepository.save(tree);
+        //person.getFamilyTree().setLastPersonId(person.getId());
+        FamilyTree tree=person.getFamilyTree();
+        tree.setLastPersonId(person.getId());
+        familyTreeRepository.save(tree);
 
         return dto;
     }

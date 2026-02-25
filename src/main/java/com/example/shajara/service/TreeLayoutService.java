@@ -153,11 +153,13 @@ public class TreeLayoutService {
 
             double x, y;
             if (i % 2 == 0) {
+                // O'ng tomonga: CENTER right edge (200) + H_GAP (40) = 240
                 x = RIGHT_COL_X;
                 y = rightIdx * step;
                 rightIdx++;
             } else {
-                x = LEFT_COL_X - NODE_W;
+                // Chap tomonga: CENTER left edge (0) - H_GAP (40) - NODE_W (200) = -240
+                x = LEFT_COL_X;
                 y = leftIdx * step;
                 leftIdx++;
             }
