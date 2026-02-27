@@ -166,6 +166,29 @@ public class TreeLayoutService {
 
             addNode(nodeMap, visited, spouse, x, y, "SPOUSE");
             connections.add(conn(center.getId(), spouse.getId(), "SPOUSE"));
+
+            // ===== YANGILIK: SPOUSE ning ham OTA-ONASINI QO'SHISH =====
+            if (spouse.getFatherId() != null) {
+                personRepository.findById(spouse.getFatherId()).ifPresent(father -> {
+                    if (!visited.contains(father.getId())) {
+                        addNode(nodeMap, visited, father, x + (NODE_W / 2.0), y - V_SPACE, "FATHER");
+                        connections.add(conn(father.getId(), spouse.getId(), "PARENT_CHILD"));
+                    }
+                });
+            }
+
+            if (spouse.getMotherId() != null) {
+                personRepository.findById(spouse.getMotherId()).ifPresent(mother -> {
+                    if (!visited.contains(mother.getId())) {
+                        addNode(nodeMap, visited, mother, x - (NODE_W / 2.0), y - V_SPACE, "MOTHER");
+                        connections.add(conn(mother.getId(), spouse.getId(), "PARENT_CHILD"));
+                        // Ota va ona o'rtasida SPOUSE liniyasi
+                        if (spouse.getFatherId() != null) {
+                            connections.add(conn(spouse.getFatherId(), mother.getId(), "SPOUSE"));
+                        }
+                    }
+                });
+            }
         }
     }
 

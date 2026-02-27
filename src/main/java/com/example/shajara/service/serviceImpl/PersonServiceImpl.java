@@ -112,12 +112,14 @@ public class PersonServiceImpl implements PersonService {
                 .orElseThrow(() -> new NotFoundException("family not found"));
 
         // FATHER
+        Person fatherDtoPerson = null;
         if (child.getFatherId() == null || child.getFatherId() == 0) {
             if (dto.getFatherId() != null && dto.getFatherId() != 0) {
                 // Berilgan fatherId bo'yicha mavjud personni bog'laymiz
                 Person father = personRepository.findById(dto.getFatherId())
                         .orElseThrow(() -> new NotFoundException("Father person not found: " + dto.getFatherId()));
                 child.setFatherId(father.getId());
+                fatherDtoPerson = father;
             } else {
                 // Yangi father yaratamiz
                 Person father = new Person();
@@ -126,16 +128,21 @@ public class PersonServiceImpl implements PersonService {
                 father.setName("Father");
                 father = personRepository.save(father);
                 child.setFatherId(father.getId());
+                fatherDtoPerson = father;
             }
+        } else {
+            fatherDtoPerson = personRepository.findById(child.getFatherId()).orElse(null);
         }
 
         // MOTHER
+        Person motherDtoPerson = null;
         if (child.getMotherId() == null || child.getMotherId() == 0) {
             if (dto.getMotherId() != null && dto.getMotherId() != 0) {
                 // Berilgan motherId bo'yicha mavjud personni bog'laymiz
                 Person mother = personRepository.findById(dto.getMotherId())
                         .orElseThrow(() -> new NotFoundException("Mother person not found: " + dto.getMotherId()));
                 child.setMotherId(mother.getId());
+                motherDtoPerson = mother;
             } else {
                 // Yangi mother yaratamiz
                 Person mother = new Person();
@@ -144,6 +151,31 @@ public class PersonServiceImpl implements PersonService {
                 mother.setName("Mother");
                 mother = personRepository.save(mother);
                 child.setMotherId(mother.getId());
+                motherDtoPerson = mother;
+            }
+        } else {
+            motherDtoPerson = personRepository.findById(child.getMotherId()).orElse(null);
+        }
+
+        // ✅ OTA VA ONA O'RTASIDA SPOUSE RELATION QO'SHISH
+        if (fatherDtoPerson != null && motherDtoPerson != null) {
+            // Avval tekshiramiz, balki ular orasida relation allaqachon bordir?
+            boolean alreadySpouses = false;
+            List<Person> existingSpouses = relationRepository.findAllSpousesNative(fatherDtoPerson.getId());
+            for (Person s : existingSpouses) {
+                if (s.getId().equals(motherDtoPerson.getId())) {
+                    alreadySpouses = true;
+                    break;
+                }
+            }
+
+            if (!alreadySpouses) {
+                Relation spouseRelation = Relation.builder()
+                        .fromPerson(fatherDtoPerson)
+                        .toPerson(motherDtoPerson)
+                        .type(RelationType.SPOUSE)
+                        .build();
+                relationRepository.save(spouseRelation);
             }
         }
 
@@ -440,8 +472,8 @@ public class PersonServiceImpl implements PersonService {
         }
 
         // MANASHU JOYIDA BIZ TREENI LATEST PERSONINI UPDATE QILAMIZA
-        //person.getFamilyTree().setLastPersonId(person.getId());
-        FamilyTree tree=person.getFamilyTree();
+        // person.getFamilyTree().setLastPersonId(person.getId());
+        FamilyTree tree = person.getFamilyTree();
         tree.setLastPersonId(person.getId());
         familyTreeRepository.save(tree);
 
