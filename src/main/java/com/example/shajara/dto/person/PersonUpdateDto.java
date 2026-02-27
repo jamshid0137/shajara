@@ -15,10 +15,9 @@ import java.util.List;
 @NoArgsConstructor
 public class PersonUpdateDto {
 
-
     private String name;
 
-    private Gender gender ;  // default
+    private Gender gender; // default
 
     private LocalDate birthDate;
 
@@ -30,9 +29,10 @@ public class PersonUpdateDto {
 
     private String phoneNumber;
 
-
     private Long treeId;
 
     private Long motherId;
     private Long fatherId;
+
+    private String photoUrl;
 }

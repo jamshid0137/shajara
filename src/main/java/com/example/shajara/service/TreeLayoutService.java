@@ -110,8 +110,30 @@ public class TreeLayoutService {
         if (center.getFatherId() != null) {
             personRepository.findById(center.getFatherId()).ifPresent(father -> {
                 if (!visited.contains(father.getId())) {
-                    addNode(nodeMap, visited, father, NODE_W / 2.0 + H_GAP, y, "FATHER");
+                    double fX = NODE_W / 2.0 + H_GAP;
+                    addNode(nodeMap, visited, father, fX, y, "FATHER");
                     connections.add(conn(father.getId(), center.getId(), "PARENT_CHILD"));
+
+                    // OTA ning OTA-ONASI (Buvasi va buvisi)
+                    if (father.getFatherId() != null) {
+                        personRepository.findById(father.getFatherId()).ifPresent(gf -> {
+                            if (!visited.contains(gf.getId())) {
+                                addNode(nodeMap, visited, gf, fX + NODE_W / 2.0, y - V_SPACE, "FATHER");
+                                connections.add(conn(gf.getId(), father.getId(), "PARENT_CHILD"));
+                            }
+                        });
+                    }
+                    if (father.getMotherId() != null) {
+                        personRepository.findById(father.getMotherId()).ifPresent(gm -> {
+                            if (!visited.contains(gm.getId())) {
+                                addNode(nodeMap, visited, gm, fX - NODE_W / 2.0, y - V_SPACE, "MOTHER");
+                                connections.add(conn(gm.getId(), father.getId(), "PARENT_CHILD"));
+                                if (father.getFatherId() != null) {
+                                    connections.add(conn(father.getFatherId(), gm.getId(), "SPOUSE"));
+                                }
+                            }
+                        });
+                    }
                 }
             });
         }
@@ -119,11 +141,33 @@ public class TreeLayoutService {
         if (center.getMotherId() != null) {
             personRepository.findById(center.getMotherId()).ifPresent(mother -> {
                 if (!visited.contains(mother.getId())) {
-                    addNode(nodeMap, visited, mother, -(NODE_W / 2.0 + H_GAP + NODE_W), y, "MOTHER");
+                    double mX = -(NODE_W / 2.0 + H_GAP + NODE_W);
+                    addNode(nodeMap, visited, mother, mX, y, "MOTHER");
                     connections.add(conn(mother.getId(), center.getId(), "PARENT_CHILD"));
                     // Ota va ona o'rtasida SPOUSE liniyasi
                     if (center.getFatherId() != null) {
                         connections.add(conn(center.getFatherId(), mother.getId(), "SPOUSE"));
+                    }
+
+                    // ONA ning OTA-ONASI (Buvasi va buvisi)
+                    if (mother.getFatherId() != null) {
+                        personRepository.findById(mother.getFatherId()).ifPresent(gf -> {
+                            if (!visited.contains(gf.getId())) {
+                                addNode(nodeMap, visited, gf, mX + NODE_W / 2.0, y - V_SPACE, "FATHER");
+                                connections.add(conn(gf.getId(), mother.getId(), "PARENT_CHILD"));
+                            }
+                        });
+                    }
+                    if (mother.getMotherId() != null) {
+                        personRepository.findById(mother.getMotherId()).ifPresent(gm -> {
+                            if (!visited.contains(gm.getId())) {
+                                addNode(nodeMap, visited, gm, mX - NODE_W / 2.0, y - V_SPACE, "MOTHER");
+                                connections.add(conn(gm.getId(), mother.getId(), "PARENT_CHILD"));
+                                if (mother.getFatherId() != null) {
+                                    connections.add(conn(mother.getFatherId(), gm.getId(), "SPOUSE"));
+                                }
+                            }
+                        });
                     }
                 }
             });
@@ -201,15 +245,32 @@ public class TreeLayoutService {
                     addNode(nodeMap, visited, spChild, spChildX, y + V_SPACE, "CHILD");
                     connections.add(conn(spouse.getId(), spChild.getId(), "PARENT_CHILD"));
                     childCount++;
-                    // Agar bu bolaning 2-chi ota onasi ham bilsa, ular ustida ham bog'lovchi
-                    // yasaymiz
-                    if (spChild.getFatherId() != null && !spChild.getFatherId().equals(spouse.getId())
-                            && visited.contains(spChild.getFatherId())) {
-                        connections.add(conn(spChild.getFatherId(), spChild.getId(), "PARENT_CHILD"));
+
+                    // Farzandning 2-chi ota-onasi: agar visited bo'lsa ulaymiz,
+                    // agar yo'q bo'lsa ham node qo'shib ulaymiz
+                    if (spChild.getFatherId() != null && !spChild.getFatherId().equals(spouse.getId())) {
+                        Long otherId = spChild.getFatherId();
+                        if (visited.contains(otherId)) {
+                            connections.add(conn(otherId, spChild.getId(), "PARENT_CHILD"));
+                        } else {
+                            personRepository.findById(otherId).ifPresent(otherParent -> {
+                                addNode(nodeMap, visited, otherParent, spChildX + NODE_W + H_GAP, y, "SPOUSE");
+                                connections.add(conn(spouse.getId(), otherParent.getId(), "SPOUSE"));
+                                connections.add(conn(otherParent.getId(), spChild.getId(), "PARENT_CHILD"));
+                            });
+                        }
                     }
-                    if (spChild.getMotherId() != null && !spChild.getMotherId().equals(spouse.getId())
-                            && visited.contains(spChild.getMotherId())) {
-                        connections.add(conn(spChild.getMotherId(), spChild.getId(), "PARENT_CHILD"));
+                    if (spChild.getMotherId() != null && !spChild.getMotherId().equals(spouse.getId())) {
+                        Long otherId = spChild.getMotherId();
+                        if (visited.contains(otherId)) {
+                            connections.add(conn(otherId, spChild.getId(), "PARENT_CHILD"));
+                        } else {
+                            personRepository.findById(otherId).ifPresent(otherParent -> {
+                                addNode(nodeMap, visited, otherParent, spChildX - NODE_W - H_GAP, y, "SPOUSE");
+                                connections.add(conn(spouse.getId(), otherParent.getId(), "SPOUSE"));
+                                connections.add(conn(otherParent.getId(), spChild.getId(), "PARENT_CHILD"));
+                            });
+                        }
                     }
                 }
             }
@@ -223,6 +284,18 @@ public class TreeLayoutService {
                     addNode(nodeMap, visited, other, otherX, y + PARTNER_V_GAP * 2, "SPOUSE");
                     connections.add(conn(spouse.getId(), other.getId(), "SPOUSE"));
                     otherSpouseCount++;
+
+                    // Bu boshqa spouse uchun ham farzandlar bilan bog'lanish tekshirish
+                    for (Person spChild : spouseChildren) {
+                        if (spChild.getFatherId() != null && spChild.getFatherId().equals(other.getId())
+                                && visited.contains(spChild.getId())) {
+                            connections.add(conn(other.getId(), spChild.getId(), "PARENT_CHILD"));
+                        }
+                        if (spChild.getMotherId() != null && spChild.getMotherId().equals(other.getId())
+                                && visited.contains(spChild.getId())) {
+                            connections.add(conn(other.getId(), spChild.getId(), "PARENT_CHILD"));
+                        }
+                    }
                 }
             }
         }
@@ -253,13 +326,44 @@ public class TreeLayoutService {
                 continue;
 
             addNode(nodeMap, visited, s, sibX, count * step, "SIBLING");
-            count++;
 
             if (center.getFatherId() != null) {
                 connections.add(conn(center.getFatherId(), s.getId(), "PARENT_CHILD"));
             } else if (center.getMotherId() != null) {
                 connections.add(conn(center.getMotherId(), s.getId(), "PARENT_CHILD"));
             }
+
+            // AKA-UKANING SPOUSE LARI
+            List<Person> siblingSpouses = relationRepository.findAllSpousesNative(s.getId());
+            for (int k = 0; k < siblingSpouses.size(); k++) {
+                Person sbSp = siblingSpouses.get(k);
+                if (!visited.contains(sbSp.getId())) {
+                    double sbSpX = sibX - (NODE_W + H_GAP);
+                    addNode(nodeMap, visited, sbSp, sbSpX, count * step, "SPOUSE");
+                    connections.add(conn(s.getId(), sbSp.getId(), "SPOUSE"));
+                }
+            }
+
+            // AKA-UKANING NEVARALARI (Children of sibling)
+            List<Person> siblingChildren = personRepository.findAllByFatherIdOrMotherId(s.getId(), s.getId());
+            int scCount = 0;
+            for (Person sc : siblingChildren) {
+                if (!visited.contains(sc.getId())) {
+                    addNode(nodeMap, visited, sc, sibX + (scCount * 20), (count * step) + V_SPACE, "CHILD");
+                    connections.add(conn(s.getId(), sc.getId(), "PARENT_CHILD"));
+                    scCount++;
+                    // Onasi/Otasi tekshiruvi
+                    if (sc.getFatherId() != null && !sc.getFatherId().equals(s.getId())
+                            && visited.contains(sc.getFatherId())) {
+                        connections.add(conn(sc.getFatherId(), sc.getId(), "PARENT_CHILD"));
+                    }
+                    if (sc.getMotherId() != null && !sc.getMotherId().equals(s.getId())
+                            && visited.contains(sc.getMotherId())) {
+                        connections.add(conn(sc.getMotherId(), sc.getId(), "PARENT_CHILD"));
+                    }
+                }
+            }
+            count++;
         }
     }
 
@@ -290,13 +394,63 @@ public class TreeLayoutService {
 
             connections.add(conn(center.getId(), child.getId(), "PARENT_CHILD"));
 
-            if (child.getFatherId() != null && !child.getFatherId().equals(center.getId())
-                    && nodeMap.containsKey(child.getFatherId())) {
-                connections.add(conn(child.getFatherId(), child.getId(), "PARENT_CHILD"));
+            connections.add(conn(center.getId(), child.getId(), "PARENT_CHILD"));
+
+            // --- FARZANDNING 2-CHI OTA-ONASI (BOSHQARUVCHI) QO'SHISH ---
+            if (child.getFatherId() != null && !child.getFatherId().equals(center.getId())) {
+                if (!visited.contains(child.getFatherId())) {
+                    personRepository.findById(child.getFatherId()).ifPresent(f -> {
+                        addNode(nodeMap, visited, f, cx + NODE_W, 0, "SPOUSE"); // Koordinata muhim emas, Balkangraph
+                                                                                // o'zi to'g'irlaydi
+                        connections.add(conn(center.getId(), f.getId(), "SPOUSE"));
+                        connections.add(conn(f.getId(), child.getId(), "PARENT_CHILD"));
+                    });
+                } else {
+                    connections.add(conn(child.getFatherId(), child.getId(), "PARENT_CHILD"));
+                }
             }
-            if (child.getMotherId() != null && !child.getMotherId().equals(center.getId())
-                    && nodeMap.containsKey(child.getMotherId())) {
-                connections.add(conn(child.getMotherId(), child.getId(), "PARENT_CHILD"));
+            if (child.getMotherId() != null && !child.getMotherId().equals(center.getId())) {
+                if (!visited.contains(child.getMotherId())) {
+                    personRepository.findById(child.getMotherId()).ifPresent(m -> {
+                        addNode(nodeMap, visited, m, cx - NODE_W, 0, "SPOUSE");
+                        connections.add(conn(center.getId(), m.getId(), "SPOUSE"));
+                        connections.add(conn(m.getId(), child.getId(), "PARENT_CHILD"));
+                    });
+                } else {
+                    connections.add(conn(child.getMotherId(), child.getId(), "PARENT_CHILD"));
+                }
+            }
+
+            // BOSHQA XOTIN/ER (Child's spouses)
+            List<Person> childSpouses = relationRepository.findAllSpousesNative(child.getId());
+            for (int j = 0; j < childSpouses.size(); j++) {
+                Person csp = childSpouses.get(j);
+                if (!visited.contains(csp.getId())) {
+                    double cspX = cx + (j % 2 == 0 ? NODE_W + 20 : -(NODE_W + 20)); // yoniga
+                    addNode(nodeMap, visited, csp, cspX, childY, "SPOUSE");
+                    connections.add(conn(child.getId(), csp.getId(), "SPOUSE"));
+                }
+            }
+
+            // NEVARALAR (Child's children)
+            List<Person> grandChildren = personRepository.findAllByFatherIdOrMotherId(child.getId(), child.getId());
+            int gcCount = 0;
+            for (Person gc : grandChildren) {
+                if (!visited.contains(gc.getId())) {
+                    double gcX = cx + (gcCount * (NODE_W + 10)) - ((grandChildren.size() * NODE_W) / 2.0);
+                    addNode(nodeMap, visited, gc, gcX, childY + V_SPACE, "CHILD");
+                    connections.add(conn(child.getId(), gc.getId(), "PARENT_CHILD"));
+                    gcCount++;
+                    // Agar nevaraning onasi/otasi childSpouse dagi biri bo'lsa ulash
+                    if (gc.getFatherId() != null && !gc.getFatherId().equals(child.getId())
+                            && visited.contains(gc.getFatherId())) {
+                        connections.add(conn(gc.getFatherId(), gc.getId(), "PARENT_CHILD"));
+                    }
+                    if (gc.getMotherId() != null && !gc.getMotherId().equals(child.getId())
+                            && visited.contains(gc.getMotherId())) {
+                        connections.add(conn(gc.getMotherId(), gc.getId(), "PARENT_CHILD"));
+                    }
+                }
             }
         }
     }

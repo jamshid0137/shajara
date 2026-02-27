@@ -250,6 +250,8 @@ public class PersonServiceImpl implements PersonService {
         person.setDiedDate(dto.getDiedDate());
         if (dto.getPhoneNumber() != null)
             person.setPhoneNumber(dto.getPhoneNumber());
+        if (dto.getPhotoUrl() != null)
+            person.setPhotoUrl(dto.getPhotoUrl());
 
         // Father va Mother update
         // bitta treeda bo'lishini va unaqa odam bor yo'qligini tekshirish kerakov !
@@ -257,9 +259,9 @@ public class PersonServiceImpl implements PersonService {
         // null qiymat uchun ham yozish kerak yani bu relation emas endi shunchaki null
         // qilsak yetarli bo'ladi
 
-        if (dto.getFatherId() == null)
+        if (dto.getFatherId() != null)
             person.setFatherId(dto.getFatherId());
-        if (dto.getMotherId() == null)
+        if (dto.getMotherId() != null)
             person.setMotherId(dto.getMotherId());
 
         if (dto.getFatherId() != null && dto.getFatherId() != 0) {

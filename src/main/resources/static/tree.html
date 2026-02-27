@@ -533,6 +533,31 @@
 
                 nodes: []
             });
+
+            /* ── EDIT FORM SAVE → Backend API ── */
+            chart.onUpdateNode(function (args) {
+                var node = args.updateNodesData && args.updateNodesData[0];
+                if (!node || !node.id) return false;
+
+                var personId = node.id;
+                var body = {
+                    name: node.name || null,
+                    birthDate: node.birthDate || null,
+                    diedDate: node.diedDate || null,
+                    photoUrl: node.photoUrl || null
+                };
+
+                apiFetch('PUT', '/api/persons/' + personId, body,
+                    function () {
+                        console.log('Person ' + personId + ' muvaffaqiyatli yangilandi!');
+                    },
+                    function (err) {
+                        showError('Saqlashda xatolik:\n' + err);
+                    }
+                );
+
+                return true; // chart local update ham bo'lsin
+            });
         }
 
         /* ────────────────────────────────────────────────────────────
