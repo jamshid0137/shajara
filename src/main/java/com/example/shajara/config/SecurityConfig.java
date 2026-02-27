@@ -32,7 +32,17 @@ public class SecurityConfig {
             "/swagger-ui/index.html",
             "/swagger-ui/**",
             "/v3/api-docs",
-            "/v3/api-docs/**"
+            "/v3/api-docs/**",
+            // Statik fayllar — JWT talab etilmaydi
+            "/lib/**",
+            "/tree.html",
+            "/style.css",
+            "/app.js",
+            "/app2.js",
+            "/index.html",
+            "/*.html",
+            "/*.css",
+            "/*.js"
     };
 
     @Bean
