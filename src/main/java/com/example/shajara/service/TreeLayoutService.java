@@ -189,6 +189,42 @@ public class TreeLayoutService {
                     }
                 });
             }
+
+            // ===== YANGILIK 2: SPOUSE NING O'Z (BOSHQA) FARZANDLARINI HAM QO'SHISH =====
+            List<Person> spouseChildren = personRepository.findAllByFatherIdOrMotherId(spouse.getId(), spouse.getId());
+            int childCount = 0;
+            for (Person spChild : spouseChildren) {
+                if (!visited.contains(spChild.getId())) {
+                    // Spousening tagiga joylaymiz
+                    double spChildX = x + (childCount * (NODE_W + CHILD_GAP))
+                            - ((spouseChildren.size() * NODE_W) / 2.0);
+                    addNode(nodeMap, visited, spChild, spChildX, y + V_SPACE, "CHILD");
+                    connections.add(conn(spouse.getId(), spChild.getId(), "PARENT_CHILD"));
+                    childCount++;
+                    // Agar bu bolaning 2-chi ota onasi ham bilsa, ular ustida ham bog'lovchi
+                    // yasaymiz
+                    if (spChild.getFatherId() != null && !spChild.getFatherId().equals(spouse.getId())
+                            && visited.contains(spChild.getFatherId())) {
+                        connections.add(conn(spChild.getFatherId(), spChild.getId(), "PARENT_CHILD"));
+                    }
+                    if (spChild.getMotherId() != null && !spChild.getMotherId().equals(spouse.getId())
+                            && visited.contains(spChild.getMotherId())) {
+                        connections.add(conn(spChild.getMotherId(), spChild.getId(), "PARENT_CHILD"));
+                    }
+                }
+            }
+
+            // ===== YANGILIK 3: SPOUSE NING O'ZINING BOSHQA SPOUSELARINI HAM QO'SHISH =====
+            List<Person> otherSpouses = relationRepository.findAllSpousesNative(spouse.getId());
+            int otherSpouseCount = 0;
+            for (Person other : otherSpouses) {
+                if (!visited.contains(other.getId()) && !other.getId().equals(center.getId())) {
+                    double otherX = x + (otherSpouseCount % 2 == 0 ? NODE_W + H_GAP : -(NODE_W + H_GAP));
+                    addNode(nodeMap, visited, other, otherX, y + PARTNER_V_GAP * 2, "SPOUSE");
+                    connections.add(conn(spouse.getId(), other.getId(), "SPOUSE"));
+                    otherSpouseCount++;
+                }
+            }
         }
     }
 
