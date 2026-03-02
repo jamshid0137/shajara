@@ -534,10 +534,36 @@
                 nodes: []
             });
 
-            /* ── EDIT FORM SAVE → Backend API ── */
-            chart.onUpdateNode(function (args) {
+            /* ── UPDATE va DELETE eventlari ──
+               FamilyTree.js yangi API: chart.on('update', fn)
+               fn argumentlari: (sender, args)
+               args = { addNodesData:[], updateNodesData:[], removeNodeId: id|null }
+            */
+            chart.on('update', function (sender, args) {
+
+                /* ─── DELETE ─── */
+                if (args.removeNodeId !== undefined && args.removeNodeId !== null) {
+                    var delId = args.removeNodeId;
+
+                    if (!confirm("Haqiqatan ham bu odamni o'chirmoqchimisiz?\nID: " + delId)) {
+                        return false; // false → FamilyTree.js o'zgartirish qilmaydi
+                    }
+
+                    apiFetch('DELETE', '/api/persons/' + delId, null,
+                        function () {
+                            console.log('Person ' + delId + " o'chirildi");
+                            reloadTree();
+                        },
+                        function (err) {
+                            showError("O'chirishda xatolik:\n" + err);
+                        }
+                    );
+                    return true; // true → FamilyTree.js lokal nodeni ham olib tashlaydi
+                }
+
+                /* ─── UPDATE ─── */
                 var node = args.updateNodesData && args.updateNodesData[0];
-                if (!node || !node.id) return false;
+                if (!node || !node.id) return true;
 
                 var personId = node.id;
                 var body = {
@@ -556,7 +582,7 @@
                     }
                 );
 
-                return true; // chart local update ham bo'lsin
+                return true;
             });
         }
 

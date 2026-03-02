@@ -368,15 +368,39 @@ public class TreeLayoutService {
     }
 
     // =========================================================
-    // BOLALAR — dinamik Y (spouselar tagidan)
+    // BOLALAR — rekursiv, ixtiyoriy chuqurlik
+    // FamilyTree.js koordinatani o'zi hisoblaydi,
+    // biz faqat nodelar va connectionlarni beramiz.
     // =========================================================
     private void placeChildren(Person center,
             Map<Long, TreeNodeDto> nodeMap,
             List<TreeLayoutResponseDto.ConnectionDto> connections,
             Set<Long> visited,
             double childY) {
+        // Rekursiv traversal — childY muhim emas (FamilyTree.js layout qiladi)
+        addDescendantsRecursive(center, nodeMap, connections, visited, childY, 0);
+    }
+
+    /**
+     * Berilgan shaxsning barcha avlodlarini (children, grandchildren, ...)
+     * rekursiv ravishda qo'shadi. Har bir avlodning:
+     * - O'zi
+     * - Juft(lar)i (SPOUSE connection bilan)
+     * - Farzandlari (rekursiv)
+     */
+    private void addDescendantsRecursive(Person parent,
+            Map<Long, TreeNodeDto> nodeMap,
+            List<TreeLayoutResponseDto.ConnectionDto> connections,
+            Set<Long> visited,
+            double baseY,
+            int depth) {
+
+        if (depth > 20)
+            return; // Cheksiz loopdan himoya (amalda 20 avlod yetarli)
+
         List<Person> children = personRepository.findAllByFatherIdOrMotherId(
-                center.getId(), center.getId());
+                parent.getId(), parent.getId());
+
         if (children == null || children.isEmpty())
             return;
 
@@ -390,68 +414,43 @@ public class TreeLayoutService {
                 continue;
 
             double cx = startX + i * (NODE_W + CHILD_GAP);
-            addNode(nodeMap, visited, child, cx, childY, "CHILD");
+            double cy = baseY + depth * V_SPACE; // FamilyTree.js buni ignore qiladi
+            addNode(nodeMap, visited, child, cx, cy, "CHILD");
 
-            connections.add(conn(center.getId(), child.getId(), "PARENT_CHILD"));
+            // Ota/ona → farzand connection
+            connections.add(conn(parent.getId(), child.getId(), "PARENT_CHILD"));
 
-            connections.add(conn(center.getId(), child.getId(), "PARENT_CHILD"));
-
-            // --- FARZANDNING 2-CHI OTA-ONASI (BOSHQARUVCHI) QO'SHISH ---
-            if (child.getFatherId() != null && !child.getFatherId().equals(center.getId())) {
-                if (!visited.contains(child.getFatherId())) {
-                    personRepository.findById(child.getFatherId()).ifPresent(f -> {
-                        addNode(nodeMap, visited, f, cx + NODE_W, 0, "SPOUSE"); // Koordinata muhim emas, Balkangraph
-                                                                                // o'zi to'g'irlaydi
-                        connections.add(conn(center.getId(), f.getId(), "SPOUSE"));
-                        connections.add(conn(f.getId(), child.getId(), "PARENT_CHILD"));
-                    });
-                } else {
-                    connections.add(conn(child.getFatherId(), child.getId(), "PARENT_CHILD"));
-                }
+            // Farzandning ikkinchi ota-onasi bilan connection
+            if (child.getFatherId() != null && !child.getFatherId().equals(parent.getId())
+                    && visited.contains(child.getFatherId())) {
+                connections.add(conn(child.getFatherId(), child.getId(), "PARENT_CHILD"));
             }
-            if (child.getMotherId() != null && !child.getMotherId().equals(center.getId())) {
-                if (!visited.contains(child.getMotherId())) {
-                    personRepository.findById(child.getMotherId()).ifPresent(m -> {
-                        addNode(nodeMap, visited, m, cx - NODE_W, 0, "SPOUSE");
-                        connections.add(conn(center.getId(), m.getId(), "SPOUSE"));
-                        connections.add(conn(m.getId(), child.getId(), "PARENT_CHILD"));
-                    });
-                } else {
-                    connections.add(conn(child.getMotherId(), child.getId(), "PARENT_CHILD"));
-                }
+            if (child.getMotherId() != null && !child.getMotherId().equals(parent.getId())
+                    && visited.contains(child.getMotherId())) {
+                connections.add(conn(child.getMotherId(), child.getId(), "PARENT_CHILD"));
             }
 
-            // BOSHQA XOTIN/ER (Child's spouses)
+            // ── Farzandning juft(lar)ini qo'shish ──
             List<Person> childSpouses = relationRepository.findAllSpousesNative(child.getId());
             for (int j = 0; j < childSpouses.size(); j++) {
                 Person csp = childSpouses.get(j);
-                if (!visited.contains(csp.getId())) {
-                    double cspX = cx + (j % 2 == 0 ? NODE_W + 20 : -(NODE_W + 20)); // yoniga
-                    addNode(nodeMap, visited, csp, cspX, childY, "SPOUSE");
+                if (visited.contains(csp.getId())) {
+                    // Allaqachon qo'shilgan → faqat connection
                     connections.add(conn(child.getId(), csp.getId(), "SPOUSE"));
+                    continue;
                 }
+                // Juft yoniga joylaymiz (FamilyTree.js o'zi tartibga soladi)
+                double cspX = cx + (j % 2 == 0 ? NODE_W + H_GAP : -(NODE_W + H_GAP));
+                addNode(nodeMap, visited, csp, cspX, cy, "SPOUSE");
+                connections.add(conn(child.getId(), csp.getId(), "SPOUSE"));
+
+                // Juftning ikkinchi ota-onasi yoki farzandlari bor bo'lsa ham qo'shamiz
+                // lekin ularni rekursiv o'tkazmaymiz (faqat bitta child liniyasi)
             }
 
-            // NEVARALAR (Child's children)
-            List<Person> grandChildren = personRepository.findAllByFatherIdOrMotherId(child.getId(), child.getId());
-            int gcCount = 0;
-            for (Person gc : grandChildren) {
-                if (!visited.contains(gc.getId())) {
-                    double gcX = cx + (gcCount * (NODE_W + 10)) - ((grandChildren.size() * NODE_W) / 2.0);
-                    addNode(nodeMap, visited, gc, gcX, childY + V_SPACE, "CHILD");
-                    connections.add(conn(child.getId(), gc.getId(), "PARENT_CHILD"));
-                    gcCount++;
-                    // Agar nevaraning onasi/otasi childSpouse dagi biri bo'lsa ulash
-                    if (gc.getFatherId() != null && !gc.getFatherId().equals(child.getId())
-                            && visited.contains(gc.getFatherId())) {
-                        connections.add(conn(gc.getFatherId(), gc.getId(), "PARENT_CHILD"));
-                    }
-                    if (gc.getMotherId() != null && !gc.getMotherId().equals(child.getId())
-                            && visited.contains(gc.getMotherId())) {
-                        connections.add(conn(gc.getMotherId(), gc.getId(), "PARENT_CHILD"));
-                    }
-                }
-            }
+            // ── Rekursiv: farzandning avlodlari ──
+            addDescendantsRecursive(child, nodeMap, connections, visited,
+                    cy + V_SPACE, depth + 1);
         }
     }
 

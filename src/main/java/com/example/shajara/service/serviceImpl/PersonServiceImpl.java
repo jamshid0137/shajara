@@ -338,9 +338,9 @@ public class PersonServiceImpl implements PersonService {
         // childrenlarini topib fatherid yoki motherid null qilish kerak
         List<Person> children = personRepository.findAllByFatherIdOrMotherId(id, id);
         for (Person p : children) {
-            if (p.getFatherId().equals(id))
+            if (id.equals(p.getFatherId())) // ✅ NPE yo'q: id hech qachon null emas
                 p.setFatherId(null);
-            if (p.getMotherId().equals(id))
+            if (id.equals(p.getMotherId())) // ✅ NPE yo'q: id hech qachon null emas
                 p.setMotherId(null);
         }
         personRepository.saveAll(children);
