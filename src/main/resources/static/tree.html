@@ -451,6 +451,10 @@
         var chart = null;
         var _pendingChildId = null;
         var _pendingChildTreeId = null;
+        /* Hozir chartda yuklangan barcha FamilyTree-format nodelar (id → node) */
+        var _loadedFtNodes = {};
+        /* Har bir nodening treeId si (id → treeId) */
+        var _nodeTreeIdMap = {};
 
         /* ────────────────────────────────────────────────────────────
            INIT
@@ -476,6 +480,12 @@
                 showError('FamilyTree.js kutubxonasi yuklanmadi! /lib/familytree.js tekshiring.');
                 return;
             }
+
+            /* global handler — nodeMenu onclick uchun */
+            window._showRelClick = function (e, nodeId) {
+                e.stopPropagation();
+                if (typeof showRelatives === 'function') showRelatives(nodeId);
+            };
 
             chart = new FamilyTree(document.getElementById('tree'), {
                 mode: 'dark',
@@ -512,6 +522,13 @@
 
                 /* ── Node o'ng-klik menyu ── */
                 nodeMenu: {
+                    showRelMenu: {
+                        text: "📂 Ko'rsatish",
+                        onClick: function (nodeId) {
+                            _loadedFtNodes = {};   /* keshni tozalaymiz */
+                            loadTree(nodeId);
+                        }
+                    },
                     addParentMenu: {
                         text: "🔼 Ota-ona qo'sh",
                         onClick: function (nodeId) { addParent(nodeId); }
@@ -524,7 +541,7 @@
                         text: "🔽 Farzand qo'sh",
                         onClick: function (nodeId) {
                             _pendingChildId = nodeId;
-                            _pendingChildTreeId = Number(getTreeId());
+                            _pendingChildTreeId = _nodeTreeIdMap[nodeId] || Number(getTreeId());
                             document.getElementById('genderPopup').classList.remove('hidden');
                         }
                     },
@@ -584,6 +601,98 @@
 
                 return true;
             });
+        }
+
+        /* ────────────────────────────────────────────────────────────
+           showRelatives(nodeId)
+           O'sha shaxs uchun backend dan barcha qarindoshlarni oladi
+           va hali ko'rinmagan nodelarni chart.addNodes() bilan qo'shadi.
+           FamilyTree.js ga mos: reload qilmaydi, daraxt shu yerda o'sadi.
+        ──────────────────────────────────────────────────────────── */
+        function showRelatives(nodeId) {
+            var token = getToken();
+            if (!token) { showError('Token kiritilmagan'); return; }
+
+            fetch('/api/layout/person/' + nodeId, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+                .then(function (r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function (data) {
+                    if (!data || !Array.isArray(data.nodes)) return;
+
+                    var rawNodes = data.nodes || [];
+                    var connections = data.connections || [];
+
+                    /* ── gender xaritasi ── */
+                    var genderMap = {};
+                    rawNodes.forEach(function (n) {
+                        genderMap[n.id] = (n.gender || 'MALE').toUpperCase();
+                    });
+
+                    /* ── fid / mid / pids xaritasi ── */
+                    var fidMap = {}, midMap = {}, spouseMap = {};
+                    connections.forEach(function (c) {
+                        var t = (c.type || '').toUpperCase();
+                        if (t === 'PARENT_CHILD') {
+                            if (genderMap[c.fromId] === 'FEMALE') midMap[c.toId] = c.fromId;
+                            else fidMap[c.toId] = c.fromId;
+                        } else if (t === 'SPOUSE') {
+                            if (!spouseMap[c.fromId]) spouseMap[c.fromId] = [];
+                            if (!spouseMap[c.toId]) spouseMap[c.toId] = [];
+                            if (spouseMap[c.fromId].indexOf(c.toId) < 0) spouseMap[c.fromId].push(c.toId);
+                            if (spouseMap[c.toId].indexOf(c.fromId) < 0) spouseMap[c.toId].push(c.fromId);
+                        }
+                    });
+
+                    var roleLbls = {
+                        CENTER: '⭐ Asosiy', FATHER: '👨 Ota', MOTHER: '👩 Ona',
+                        SPOUSE: '💑 Juft', CHILD: '👶 Farzand', SIBLING: '👫 Aka-uka'
+                    };
+
+                    /* ── Faqat YANGI nodelarni qo'shamiz ── */
+                    var newNodes = [];
+                    rawNodes.forEach(function (n) {
+                        if (_loadedFtNodes[n.id]) return;
+
+                        var years = '';
+                        if (n.birthDate || n.diedDate) {
+                            years = (n.birthDate ? getYear(n.birthDate) : '?')
+                                + (n.diedDate ? ' – ' + getYear(n.diedDate) : '');
+                        }
+                        var newNode = {
+                            id: n.id,
+                            fid: fidMap[n.id] !== undefined ? fidMap[n.id] : null,
+                            mid: midMap[n.id] !== undefined ? midMap[n.id] : null,
+                            pids: spouseMap[n.id] || [],
+                            name: n.name || '—',
+                            roleLabel: roleLbls[n.role] || (n.role || ''),
+                            years: years,
+                            birthDate: n.birthDate ? String(n.birthDate) : '',
+                            diedDate: n.diedDate ? String(n.diedDate) : '',
+                            photoUrl: n.photoUrl || null,
+                            tags: [genderMap[n.id] === 'FEMALE' ? 'female' : 'male']
+                        };
+                        newNodes.push(newNode);
+                        _loadedFtNodes[n.id] = newNode;
+                        /* nodening treeId sini ham saqlaymiz */
+                        if (n.treeId) _nodeTreeIdMap[n.id] = n.treeId;
+                    });
+
+                    if (newNodes.length > 0) {
+                        /* Barcha (eski + yangi) nodelarni birga yuklash */
+                        var allNodes = Object.values(_loadedFtNodes);
+                        chart.load(allNodes);
+                        console.log('[showRelatives] ' + newNodes.length + ' yangi node qo\'shildi, jami: ' + allNodes.length);
+                    } else {
+                        console.log('[showRelatives] Yangi node yo\'q — hammasi allaqachon ko\'rinmoqda');
+                    }
+                })
+                .catch(function (e) {
+                    showError('Qarindoshlarni yuklashda xatolik: ' + e.message);
+                });
         }
 
         /* ────────────────────────────────────────────────────────────
@@ -717,6 +826,12 @@
 
             /* ── 4. FamilyTree.js ga yuklash ── */
             if (!chart) { showError('Chart initsializatsiya qilinmagan!'); return; }
+
+            /* Yuklangan nodelarni saqlaymiz (merge uchun) */
+            ftNodes.forEach(function (n) { _loadedFtNodes[n.id] = n; });
+            /* Har bir nodening treeId sini saqlaymiz */
+            rawNodes.forEach(function (n) { if (n.treeId) _nodeTreeIdMap[n.id] = n.treeId; });
+
             chart.load(ftNodes);
 
             /* ── 5. Statistika ── */
@@ -738,26 +853,30 @@
              add-child:   PersonAddChildDto      { id, childGender, treeId }
         ──────────────────────────────────────────────────────────── */
         function addParent(nodeId) {
-            var treeId = Number(getTreeId());
-            if (!treeId) { showError('Tree ID kiritilmagan!'); return; }
+            var treeId = _nodeTreeIdMap[nodeId] || Number(getTreeId());
+            if (!treeId) { showError('Tree ID topilmadi!'); return; }
 
-            /* PersonAddParentDto: { id, fatherId, motherId, treeId }
-               fatherId/motherId = null → backend yangi person yaratadi */
             apiFetch('POST', '/api/persons/add-parent',
                 { id: Number(nodeId), fatherId: null, motherId: null, treeId: treeId },
-                function () { reloadTree(); },
+                function () {
+                    /* Qayta yuklaymiz — bu nodeni markaz qilib */
+                    _loadedFtNodes = {};
+                    reloadTree();
+                },
                 function (err) { showError("Ota-ona qo'shishda xatolik:\n" + err); }
             );
         }
 
         function addSpouse(nodeId) {
-            var treeId = Number(getTreeId());
-            if (!treeId) { showError('Tree ID kiritilmagan!'); return; }
+            var treeId = _nodeTreeIdMap[nodeId] || Number(getTreeId());
+            if (!treeId) { showError('Tree ID topilmadi!'); return; }
 
-            /* PersonAddSpouseCreateDto: { id, treeId } */
             apiFetch('POST', '/api/persons/add-spouse',
                 { id: Number(nodeId), treeId: treeId },
-                function () { reloadTree(); },
+                function () {
+                    _loadedFtNodes = {};
+                    reloadTree();
+                },
                 function (err) { showError("Juft qo'shishda xatolik:\n" + err); }
             );
         }
@@ -766,12 +885,15 @@
             closeGender();
             if (!_pendingChildId) { showError('Node tanlanmagan!'); return; }
 
-            /* PersonAddChildDto: { id, childGender: Gender enum (MALE|FEMALE), treeId } */
+            var treeId = _nodeTreeIdMap[_pendingChildId] || _pendingChildTreeId;
+            if (!treeId) { showError('Tree ID topilmadi!'); return; }
+
             apiFetch('POST', '/api/persons/add-child',
-                { id: Number(_pendingChildId), childGender: gender, treeId: _pendingChildTreeId },
+                { id: Number(_pendingChildId), childGender: gender, treeId: treeId },
                 function () {
                     _pendingChildId = null;
                     _pendingChildTreeId = null;
+                    _loadedFtNodes = {};
                     reloadTree();
                 },
                 function (err) { showError("Farzand qo'shishda xatolik:\n" + err); }

@@ -11,11 +11,12 @@ import java.time.LocalDate;
 public class TreeNodeDto {
     private Long id;
     private String name;
-    private String gender; // MALE / FEMALE
-    private String role; // CENTER, FATHER, MOTHER, SPOUSE, CHILD, SIBLING
+    private String gender;
+    private String role;
     private LocalDate birthDate;
     private LocalDate diedDate;
     private String photoUrl;
+    private Long treeId; // <-- yangi maydon
 
     private double x;
     private double y;

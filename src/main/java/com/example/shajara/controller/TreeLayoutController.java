@@ -23,7 +23,24 @@ public class TreeLayoutController {
      */
     @GetMapping("/person/{personId}")
     public ResponseEntity<TreeLayoutResponseDto> getByPerson(@PathVariable Long personId) {
-        return ResponseEntity.ok(treeLayoutService.calculateLayout(personId));
+        TreeLayoutResponseDto layout = treeLayoutService.calculateLayout(personId);
+
+        // lastPersonId ni yangilaymiz — keyingi safar sahifa ochilganda shu shaxs
+        // markaz bo'ladi
+        familyTreeRepository.findAll().stream()
+                .filter(t -> t.getLastPersonId() != null || true)
+                .filter(t -> {
+                    // O'sha personId shu treega tegishli ekanligini tekshiramiz
+                    return layout.getNodes().stream()
+                            .anyMatch(n -> n.getId().equals(personId));
+                })
+                .findFirst()
+                .ifPresent(tree -> {
+                    tree.setLastPersonId(personId);
+                    familyTreeRepository.save(tree);
+                });
+
+        return ResponseEntity.ok(layout);
     }
 
     /**

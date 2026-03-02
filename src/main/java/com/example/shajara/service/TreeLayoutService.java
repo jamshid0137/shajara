@@ -490,6 +490,7 @@ public class TreeLayoutService {
                 .birthDate(p.getBirthDate())
                 .diedDate(p.getDiedDate())
                 .photoUrl(p.getPhotoUrl())
+                .treeId(p.getFamilyTree() != null ? p.getFamilyTree().getId() : null)
                 .x(x)
                 .y(y)
                 .build());
