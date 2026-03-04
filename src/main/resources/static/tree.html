@@ -520,6 +520,8 @@
 
                 toolbar: { zoom: true, fit: true, fullScreen: true },
 
+                nodeTreeMenu: true,
+
                 /* ── Node o'ng-klik menyu ── */
                 nodeMenu: {
                     showRelMenu: {
@@ -557,6 +559,45 @@
                args = { addNodesData:[], updateNodesData:[], removeNodeId: id|null }
             */
             chart.on('update', function (sender, args) {
+
+                /* ─── ADD ─── */
+                if (args.addNodesData && args.addNodesData.length > 0) {
+                    var addedNode = args.addNodesData[0];
+                    var isParent = false, isChild = false, isSpouse = false;
+                    var baseNodeId = null;
+
+                    if (addedNode.fid || addedNode.mid) {
+                        isChild = true;
+                        baseNodeId = addedNode.fid || addedNode.mid;
+                    } else if (addedNode.pids && addedNode.pids.length > 0) {
+                        isSpouse = true;
+                        baseNodeId = addedNode.pids[0];
+                    } else if (args.updateNodesData && args.updateNodesData.length > 0) {
+                        // Ota-ona qo'shilganini aniqlash: mavjud bitta nodening fid yoki mid qiymati yangilangan bo'ladi
+                        for (var i = 0; i < args.updateNodesData.length; i++) {
+                            var uNode = args.updateNodesData[i];
+                            if (uNode.fid == addedNode.id || uNode.mid == addedNode.id) {
+                                isParent = true;
+                                baseNodeId = uNode.id;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isChild && baseNodeId) {
+                        var gender = (addedNode.tags && addedNode.tags.indexOf('female') !== -1) ? 'FEMALE' : 'MALE';
+                        _pendingChildId = baseNodeId;
+                        _pendingChildTreeId = _nodeTreeIdMap[baseNodeId] || Number(getTreeId());
+                        confirmChild(gender);
+                        return false;
+                    } else if (isSpouse && baseNodeId) {
+                        addSpouse(baseNodeId);
+                        return false;
+                    } else if (isParent && baseNodeId) {
+                        addParent(baseNodeId);
+                        return false;
+                    }
+                }
 
                 /* ─── DELETE ─── */
                 if (args.removeNodeId !== undefined && args.removeNodeId !== null) {
