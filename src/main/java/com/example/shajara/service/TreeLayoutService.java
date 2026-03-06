@@ -491,6 +491,8 @@ public class TreeLayoutService {
                 .diedDate(p.getDiedDate())
                 .photoUrl(p.getPhotoUrl())
                 .treeId(p.getFamilyTree() != null ? p.getFamilyTree().getId() : null)
+                .fatherId(p.getFatherId()) // ✅ to'g'ridan DB dan
+                .motherId(p.getMotherId()) // ✅ to'g'ridan DB dan
                 .x(x)
                 .y(y)
                 .build());

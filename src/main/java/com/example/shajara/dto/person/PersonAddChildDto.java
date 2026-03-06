@@ -9,7 +9,8 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 public class PersonAddChildDto {
-    private Long id;
+    private Long id; // birinchi ota-ona (nodeMenudan bosilgan)
+    private Long spouseId; // ikkinchi ota-ona — faqat juft nodeda null emas
     private Gender childGender;
     private Long treeId;
 }

@@ -451,6 +451,7 @@
         var chart = null;
         var _pendingChildId = null;
         var _pendingChildTreeId = null;
+        var _pendingChildSpouseId = null; // faqat juft nodeda null emas
         /* Hozir chartda yuklangan barcha FamilyTree-format nodelar (id → node) */
         var _loadedFtNodes = {};
         /* Har bir nodening treeId si (id → treeId) */
@@ -543,6 +544,7 @@
                         text: "🔽 Farzand qo'sh",
                         onClick: function (nodeId) {
                             _pendingChildId = nodeId;
+                            _pendingChildSpouseId = null; // nodeMenu da doim yolg'iz
                             _pendingChildTreeId = _nodeTreeIdMap[nodeId] || Number(getTreeId());
                             document.getElementById('genderPopup').classList.remove('hidden');
                         }
@@ -563,38 +565,94 @@
                 /* ─── ADD ─── */
                 if (args.addNodesData && args.addNodesData.length > 0) {
                     var addedNode = args.addNodesData[0];
+                    // ⚠️ JSON.stringify ishlatmang! FamilyTree ichki ob'yektlarida circular reference bor
+                    console.log('[update ADD] node id:', addedNode.id,
+                        '| fid:', addedNode.fid, '| mid:', addedNode.mid,
+                        '| pids:', JSON.stringify(addedNode.pids));
+
                     var isParent = false, isChild = false, isSpouse = false;
                     var baseNodeId = null;
 
-                    if (addedNode.fid || addedNode.mid) {
-                        isChild = true;
-                        baseNodeId = addedNode.fid || addedNode.mid;
-                    } else if (addedNode.pids && addedNode.pids.length > 0) {
-                        isSpouse = true;
-                        baseNodeId = addedNode.pids[0];
-                    } else if (args.updateNodesData && args.updateNodesData.length > 0) {
-                        // Ota-ona qo'shilganini aniqlash: mavjud bitta nodening fid yoki mid qiymati yangilangan bo'ladi
+                    /* ================================================================
+                       ANIQLASH TARTIBI (MUHIM — o'zgartirmang):
+                       ─────────────────────────────────────────
+                       1️⃣  PARENT  — updateNodesData da biror MAVJUD node ning
+                           fid YOKI mid = addedNode.id bo'lsa.
+                           Bu FamilyTree.js "add father/mother" placeholder uchun
+                           ENG ISHONCHLI signal. BIRINCHI tekshiriladi.
+                           SABAB: nodeTreeMenu da yangi ota placeholder yaratilganda
+                           FamilyTree.js unga child ning mavjud motherId ni avtomatik
+                           berishi mumkin (hasMid=true → isChild=xato o'rnatilardi).
+
+                       2️⃣  SPOUSE  — addedNode.pids[] da DB dagi mavjud odam ID si
+                           bo'lsa. IKKINCHI tekshiriladi.
+                           SABAB: pids — juftlikni ko'rsatuvchi yagona belgi.
+
+                       3️⃣  CHILD   — addedNode.fid yoki mid → DB da mavjud shaxs.
+                           OXIRGI. faqat parent ham spouse ham bo'lmasa.
+                       ================================================================ */
+
+                    // ── 1️⃣ PARENT tekshiruvi ──────────────────────────────────────
+                    if (args.updateNodesData && args.updateNodesData.length > 0) {
                         for (var i = 0; i < args.updateNodesData.length; i++) {
                             var uNode = args.updateNodesData[i];
-                            if (uNode.fid == addedNode.id || uNode.mid == addedNode.id) {
+                            // addedNode.id — vaqtinchalik (temp) ID, == bilan taqqoslaymiz
+                            if (String(uNode.fid) === String(addedNode.id) ||
+                                String(uNode.mid) === String(addedNode.id)) {
                                 isParent = true;
-                                baseNodeId = uNode.id;
+                                baseNodeId = uNode.id; // farzandning haqiqiy DB id si
                                 break;
                             }
                         }
                     }
 
-                    if (isChild && baseNodeId) {
-                        var gender = (addedNode.tags && addedNode.tags.indexOf('female') !== -1) ? 'FEMALE' : 'MALE';
-                        _pendingChildId = baseNodeId;
-                        _pendingChildTreeId = _nodeTreeIdMap[baseNodeId] || Number(getTreeId());
-                        confirmChild(gender);
+                    // ── 2️⃣ SPOUSE tekshiruvi ─────────────────────────────────────
+                    if (!isParent && addedNode.pids && addedNode.pids.length > 0) {
+                        for (var pi = 0; pi < addedNode.pids.length; pi++) {
+                            if (_nodeTreeIdMap[addedNode.pids[pi]]) {
+                                isSpouse = true;
+                                baseNodeId = addedNode.pids[pi];
+                                break;
+                            }
+                        }
+                    }
+
+                    // ── 3️⃣ CHILD tekshiruvi ──────────────────────────────────────
+                    var hasFid = !isParent && !isSpouse &&
+                        addedNode.fid && addedNode.fid != 0 && _nodeTreeIdMap[addedNode.fid];
+                    var hasMid = !isParent && !isSpouse &&
+                        addedNode.mid && addedNode.mid != 0 && _nodeTreeIdMap[addedNode.mid];
+
+                    if (!isParent && !isSpouse && (hasFid || hasMid)) {
+                        isChild = true;
+                        baseNodeId = hasFid ? addedNode.fid : addedNode.mid;
+                    }
+
+                    console.log('[update ADD] → isParent:', isParent, '| isSpouse:', isSpouse,
+                        '| isChild:', isChild, '| baseNodeId:', baseNodeId);
+
+                    if (isParent && baseNodeId) {
+                        addParent(baseNodeId);
                         return false;
                     } else if (isSpouse && baseNodeId) {
                         addSpouse(baseNodeId);
                         return false;
-                    } else if (isParent && baseNodeId) {
-                        addParent(baseNodeId);
+                    } else if (isChild && baseNodeId) {
+                        // ✅ Gender: tags, gender field — barchasini tekshir
+                        var tags = addedNode.tags || [];
+                        var gField = (addedNode.gender || '').toLowerCase();
+                        var isFemale = tags.indexOf('female') !== -1
+                            || tags.indexOf('daughter') !== -1
+                            || tags.indexOf('woman') !== -1
+                            || gField === 'female' || gField === 'f';
+                        var gender = isFemale ? 'FEMALE' : 'MALE';
+                        console.log('[update ADD] child gender detected:', gender);
+
+                        _pendingChildId = baseNodeId;
+                        _pendingChildTreeId = _nodeTreeIdMap[baseNodeId] || Number(getTreeId());
+                        // Juft nodeda: hasFid VA hasMid bo'lsa ikkinchi ota-onani saqlaymiz
+                        _pendingChildSpouseId = (hasFid && hasMid) ? addedNode.mid : null;
+                        confirmChild(gender);
                         return false;
                     }
                 }
@@ -796,12 +854,8 @@
                 return;
             }
 
-            /* ── 1. connections → fid / mid / pids xaritasi ── */
-            var fidMap = {};   // nodeId → fatherId
-            var midMap = {};   // nodeId → motherId
-            var spouseMap = {};   // nodeId → [spouseId, ...]
-
-            /* nodeId → gender tez topish uchun */
+            /* ── 1. spouseMap (SPOUSE connections) va genderMap ── */
+            var spouseMap = {};
             var genderMap = {};
             rawNodes.forEach(function (n) {
                 genderMap[n.id] = (n.gender || 'MALE').toUpperCase();
@@ -809,16 +863,7 @@
 
             connections.forEach(function (c) {
                 var t = (c.type || '').toUpperCase();
-
-                if (t === 'PARENT_CHILD') {
-                    /* fromId = ota yoki ona, toId = bola */
-                    if (genderMap[c.fromId] === 'FEMALE') {
-                        midMap[c.toId] = c.fromId;
-                    } else {
-                        fidMap[c.toId] = c.fromId;
-                    }
-
-                } else if (t === 'SPOUSE') {
+                if (t === 'SPOUSE') {
                     if (!spouseMap[c.fromId]) spouseMap[c.fromId] = [];
                     if (!spouseMap[c.toId]) spouseMap[c.toId] = [];
                     if (spouseMap[c.fromId].indexOf(c.toId) < 0) spouseMap[c.fromId].push(c.toId);
@@ -837,13 +882,16 @@
             };
 
             /* ── 3. FamilyTree.js nodes yasash ── */
-            var ftNodes = rawNodes.map(function (n) {
-                /* pids: FamilyTree.js ikkala tarafdan ham qabul qiladi.
-                   Barcha turmush o'rtoqlari ID sini beramiz. */
-                var rawPids = spouseMap[n.id] || [];
-                var pids = rawPids.slice();
+            // fid/mid/pids faqat joriy layoutda mavjud node uchun
+            // — aks holda FamilyTree.js 'stpid' crash beradi
+            var layoutNodeIds = {};
+            rawNodes.forEach(function (n) { layoutNodeIds[n.id] = true; });
 
-                /* Yillar satri */
+            var ftNodes = rawNodes.map(function (n) {
+                var rawPids = spouseMap[n.id] || [];
+                // ✅ pids filtri: layoutda yo'q spouse chiqariladi
+                var pids = rawPids.filter(function (pid) { return layoutNodeIds[pid]; });
+
                 var years = '';
                 if (n.birthDate || n.diedDate) {
                     years = (n.birthDate ? getYear(n.birthDate) : '?')
@@ -852,8 +900,10 @@
 
                 return {
                     id: n.id,
-                    fid: (fidMap[n.id] !== undefined) ? fidMap[n.id] : null,
-                    mid: (midMap[n.id] !== undefined) ? midMap[n.id] : null,
+                    // ✅ fid: layoutda yo'q ota bo'lsa null
+                    fid: (n.fatherId && layoutNodeIds[n.fatherId]) ? n.fatherId : null,
+                    // ✅ mid: layoutda yo'q ona bo'lsa null
+                    mid: (n.motherId && layoutNodeIds[n.motherId]) ? n.motherId : null,
                     pids: pids,
                     name: n.name || '—',
                     roleLabel: roleLbls[n.role] || (n.role || ''),
@@ -911,12 +961,15 @@
         function addSpouse(nodeId) {
             var treeId = _nodeTreeIdMap[nodeId] || Number(getTreeId());
             if (!treeId) { showError('Tree ID topilmadi!'); return; }
+            console.log('[addSpouse] nodeId:', nodeId, 'treeId:', treeId);
 
             apiFetch('POST', '/api/persons/add-spouse',
                 { id: Number(nodeId), treeId: treeId },
-                function () {
+                function (resp) {
+                    console.log('[addSpouse] muvaffaqiyatli, javob:', resp);
                     _loadedFtNodes = {};
-                    reloadTree();
+                    // ✅ Spouse qo'shilgandan keyin CENTER (nodeId) bo'yicha reload
+                    loadTree(Number(nodeId));
                 },
                 function (err) { showError("Juft qo'shishda xatolik:\n" + err); }
             );
@@ -930,10 +983,16 @@
             if (!treeId) { showError('Tree ID topilmadi!'); return; }
 
             apiFetch('POST', '/api/persons/add-child',
-                { id: Number(_pendingChildId), childGender: gender, treeId: treeId },
+                {
+                    id: Number(_pendingChildId),
+                    spouseId: _pendingChildSpouseId ? Number(_pendingChildSpouseId) : null,
+                    childGender: gender,
+                    treeId: treeId
+                },
                 function () {
                     _pendingChildId = null;
                     _pendingChildTreeId = null;
+                    _pendingChildSpouseId = null;
                     _loadedFtNodes = {};
                     reloadTree();
                 },

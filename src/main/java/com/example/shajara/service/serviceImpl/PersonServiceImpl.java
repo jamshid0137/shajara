@@ -58,16 +58,31 @@ public class PersonServiceImpl implements PersonService {
                 .orElseThrow(() -> new NotFoundException("person not found"));
         FamilyTree familyTree = familyTreeRepository.findById(dto.getTreeId())
                 .orElseThrow(() -> new NotFoundException("family not found"));
+
         Person child = new Person();
         child.setFamilyTree(familyTree);
         child.setGender(dto.getChildGender());
         child.setName("child");
-        // ✅ Parent erkak bo'lsa fatherId, ayol bo'lsa motherId
+
+        // ✅ 1-chi ota-ona: genderiga qarab fatherId yoki motherId
         if (parent.getGender() == Gender.MALE) {
             child.setFatherId(parent.getId());
         } else {
             child.setMotherId(parent.getId());
         }
+
+        // ✅ 2-chi ota-ona: FAQAT frontend yuborsa (juft nodeda)
+        // Yolg'iz nodeda spouseId = null keladi → bog'lanmaydi
+        if (dto.getSpouseId() != null) {
+            Person spouse = personRepository.findById(dto.getSpouseId())
+                    .orElseThrow(() -> new NotFoundException("spouse person not found: " + dto.getSpouseId()));
+            if (spouse.getGender() == Gender.MALE) {
+                child.setFatherId(spouse.getId());
+            } else {
+                child.setMotherId(spouse.getId());
+            }
+        }
+
         child = personRepository.save(child);
         return new PersonAddChildResponseDto(parent.getId(), child.getId(), dto.getTreeId());
     }
@@ -101,65 +116,77 @@ public class PersonServiceImpl implements PersonService {
 
     @Override
     @Transactional
-    public PersonAddParentDto addParents(PersonAddParentDto dto) { // todo relation yo'q
+    public PersonAddParentDto addParents(PersonAddParentDto dto) {
         Person child = personRepository.findById(dto.getId())
                 .orElseThrow(() -> new NotFoundException("person not found"));
+
+        // Ikkisi ham allaqachon bormi? → xato
         if (child.getFatherId() != null && child.getFatherId() != 0
                 && child.getMotherId() != null && child.getMotherId() != 0) {
-            throw new AppBadException("Allaqachon otasiham  onasiham bor !");
+            throw new AppBadException("Bu kishining ota va onasi allaqachon mavjud!");
         }
+
         FamilyTree familyTree = familyTreeRepository.findById(dto.getTreeId())
                 .orElseThrow(() -> new NotFoundException("family not found"));
 
-        // FATHER
+        // ── OTA ──────────────────────────────────────────────────────
         Person fatherDtoPerson = null;
         if (child.getFatherId() == null || child.getFatherId() == 0) {
             if (dto.getFatherId() != null && dto.getFatherId() != 0) {
-                // Berilgan fatherId bo'yicha mavjud personni bog'laymiz
+                // Mavjud personni ota sifatida bog'laymiz
                 Person father = personRepository.findById(dto.getFatherId())
-                        .orElseThrow(() -> new NotFoundException("Father person not found: " + dto.getFatherId()));
+                        .orElseThrow(() -> new NotFoundException("Father not found: " + dto.getFatherId()));
+                if (father.getGender() != Gender.MALE) {
+                    throw new AppBadException("Father must be MALE!");
+                }
                 child.setFatherId(father.getId());
                 fatherDtoPerson = father;
             } else {
-                // Yangi father yaratamiz
+                // Yangi ota yaratamiz
                 Person father = new Person();
                 father.setFamilyTree(familyTree);
                 father.setGender(Gender.MALE);
                 father.setName("Father");
+                father.setPhotoUrl("https://shajara-person-photos.s3.us-east-1.amazonaws.com/default-male.png");
                 father = personRepository.save(father);
-                child.setFatherId(father.getId());
+                child.setFatherId(father.getId());   // ← MUHIM: childga otaning ID si yoziladi
                 fatherDtoPerson = father;
             }
         } else {
+            // Child allaqachon otaga ega → uni olib qo'yamiz (SPOUSE relation uchun kerak)
             fatherDtoPerson = personRepository.findById(child.getFatherId()).orElse(null);
         }
 
-        // MOTHER
+        // ── ONA ──────────────────────────────────────────────────────
         Person motherDtoPerson = null;
         if (child.getMotherId() == null || child.getMotherId() == 0) {
             if (dto.getMotherId() != null && dto.getMotherId() != 0) {
-                // Berilgan motherId bo'yicha mavjud personni bog'laymiz
+                // Mavjud personni ona sifatida bog'laymiz
                 Person mother = personRepository.findById(dto.getMotherId())
-                        .orElseThrow(() -> new NotFoundException("Mother person not found: " + dto.getMotherId()));
+                        .orElseThrow(() -> new NotFoundException("Mother not found: " + dto.getMotherId()));
+                if (mother.getGender() != Gender.FEMALE) {
+                    throw new AppBadException("Mother must be FEMALE!");
+                }
                 child.setMotherId(mother.getId());
                 motherDtoPerson = mother;
             } else {
-                // Yangi mother yaratamiz
+                // Yangi ona yaratamiz
                 Person mother = new Person();
                 mother.setFamilyTree(familyTree);
                 mother.setGender(Gender.FEMALE);
                 mother.setName("Mother");
+                mother.setPhotoUrl("https://shajara-person-photos.s3.us-east-1.amazonaws.com/default-female.jpg");
                 mother = personRepository.save(mother);
-                child.setMotherId(mother.getId());
+                child.setMotherId(mother.getId());   // ← MUHIM: childga onaning ID si yoziladi
                 motherDtoPerson = mother;
             }
         } else {
+            // Child allaqachon onaga ega → uni olib qo'yamiz (SPOUSE relation uchun kerak)
             motherDtoPerson = personRepository.findById(child.getMotherId()).orElse(null);
         }
 
-        // ✅ OTA VA ONA O'RTASIDA SPOUSE RELATION QO'SHISH
+        // ── OTA VA ONA O'RTASIDA SPOUSE RELATION ─────────────────────
         if (fatherDtoPerson != null && motherDtoPerson != null) {
-            // Avval tekshiramiz, balki ular orasida relation allaqachon bordir?
             boolean alreadySpouses = false;
             List<Person> existingSpouses = relationRepository.findAllSpousesNative(fatherDtoPerson.getId());
             for (Person s : existingSpouses) {
@@ -168,7 +195,6 @@ public class PersonServiceImpl implements PersonService {
                     break;
                 }
             }
-
             if (!alreadySpouses) {
                 Relation spouseRelation = Relation.builder()
                         .fromPerson(fatherDtoPerson)
@@ -179,7 +205,10 @@ public class PersonServiceImpl implements PersonService {
             }
         }
 
+        // ── CHILDNI YANGILAB SAQLAYMIZ ───────────────────────────────
+        // fatherId va/yoki motherId yangilangan bo'lishi mumkin
         personRepository.save(child);
+
         return new PersonAddParentDto(dto.getId(), child.getFatherId(), child.getMotherId(), dto.getTreeId());
     }
 

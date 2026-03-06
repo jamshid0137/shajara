@@ -16,7 +16,11 @@ public class TreeNodeDto {
     private LocalDate birthDate;
     private LocalDate diedDate;
     private String photoUrl;
-    private Long treeId; // <-- yangi maydon
+    private Long treeId;
+
+    // ✅ FamilyTree.js uchun to'g'ridan-to'g'ri fid/mid
+    private Long fatherId; // Person.fatherId
+    private Long motherId; // Person.motherId
 
     private double x;
     private double y;
