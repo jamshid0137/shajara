@@ -149,7 +149,7 @@ public class PersonServiceImpl implements PersonService {
                 father.setName("Father");
                 father.setPhotoUrl("https://shajara-person-photos.s3.us-east-1.amazonaws.com/default-male.png");
                 father = personRepository.save(father);
-                child.setFatherId(father.getId());   // ← MUHIM: childga otaning ID si yoziladi
+                child.setFatherId(father.getId()); // ← MUHIM: childga otaning ID si yoziladi
                 fatherDtoPerson = father;
             }
         } else {
@@ -177,7 +177,7 @@ public class PersonServiceImpl implements PersonService {
                 mother.setName("Mother");
                 mother.setPhotoUrl("https://shajara-person-photos.s3.us-east-1.amazonaws.com/default-female.jpg");
                 mother = personRepository.save(mother);
-                child.setMotherId(mother.getId());   // ← MUHIM: childga onaning ID si yoziladi
+                child.setMotherId(mother.getId()); // ← MUHIM: childga onaning ID si yoziladi
                 motherDtoPerson = mother;
             }
         } else {

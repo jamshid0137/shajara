@@ -177,55 +177,8 @@ export class SvgRenderer {
   drawLinks(nodeMap) {
     let linksHtml = '';
 
-    for (const [id, node] of nodeMap) {
-      const data = node.data;
-
-      // 1. Partner links (pids)
-      if (data.pids && data.pids.length > 0) {
-         for (const pid of data.pids) {
-            const partnerNode = nodeMap.get(pid);
-            // Faqat o'ng tomondagi partnerlar uchun chizamiz, ikki marta takrorlanmasligi uchun
-            if (partnerNode && partnerNode.x > node.x) {
-                const startX = node.x + node.w;
-                const startY = node.y + node.h / 2;
-                const endX = partnerNode.x;
-                const endY = partnerNode.y + partnerNode.h / 2;
-
-                const path = `M ${startX} ${startY} L ${endX} ${endY}`;
-                linksHtml += `<path d="${path}" stroke="#7B8290" stroke-width="2" fill="none" class="bft-link-partner" />`;
-            }
-         }
-      }
-      
-      // 2. Farzandlarga uzatma
-      if (data.fid || data.mid) {
-         let startX, startY;
-         const father = data.fid ? nodeMap.get(data.fid) : null;
-         const mother = data.mid ? nodeMap.get(data.mid) : null;
-         
-         if (father && mother) {
-             const leftNode = father.x < mother.x ? father : mother;
-             const rightNode = father.x < mother.x ? mother : father;
-             // Ikkala ota-onaning qo'li bog'langan masofaning o'rtasidan tushyapti
-             startX = leftNode.x + leftNode.w + (rightNode.x - (leftNode.x + leftNode.w)) / 2;
-             startY = leftNode.y + leftNode.h / 2; 
-         } else if (father) {
-             startX = father.x + father.w / 2;
-             startY = father.y + father.h;
-         } else if (mother) {
-             startX = mother.x + mother.w / 2;
-             startY = mother.y + mother.h;
-         }
-
-         if (startX !== undefined) {
-             const endX = node.x + node.w / 2;
-             const endY = node.y;
-             
-             const path = this._calculateLinkPath(startX, startY, endX, endY);
-             linksHtml += `<path d="${path}" stroke="#7B8290" stroke-width="2" fill="none" class="bft-link" />`;
-         }
-      }
-    }
+    // Vaqtinchalik chiziq chizishni o'chirib turish (User iltimosiga binoan)
+    // Huddi family tree js kabi pozitsiya/qavatlarni alohida test qilish uchun
 
     this.linksGroup.innerHTML = linksHtml;
   }

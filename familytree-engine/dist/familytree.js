@@ -1,7 +1,7 @@
-var k = Object.defineProperty;
-var I = (g, t, e) => t in g ? k(g, t, { enumerable: !0, configurable: !0, writable: !0, value: e }) : g[t] = e;
-var b = (g, t, e) => I(g, typeof t != "symbol" ? t + "" : t, e);
-const $ = {
+var I = Object.defineProperty;
+var L = (g, t, e) => t in g ? I(g, t, { enumerable: !0, configurable: !0, writable: !0, value: e }) : g[t] = e;
+var N = (g, t, e) => L(g, typeof t != "symbol" ? t + "" : t, e);
+const M = {
   normal: 0,
   mixed: 1,
   tree: 2,
@@ -10,7 +10,7 @@ const $ = {
   treeLeft: 5,
   treeRight: 6,
   grid: -1
-}, _ = {
+}, b = {
   top: 0,
   bottom: 1,
   right: 2,
@@ -19,7 +19,7 @@ const $ = {
   bottom_left: 5,
   right_top: 6,
   left_top: 7
-}, x = {
+}, y = {
   expand: 0,
   collapse: 1,
   maximize: 101,
@@ -38,12 +38,12 @@ const $ = {
   insert: 11,
   details: 13,
   exporting: 14
-}, L = {
+}, P = {
   center: 8
-}, v = {
+}, S = {
   // Layout
-  layout: $.normal,
-  orientation: _.top,
+  layout: M.normal,
+  orientation: b.top,
   levelSeparation: 60,
   siblingSeparation: 35,
   subtreeSeparation: 40,
@@ -106,7 +106,7 @@ const $ = {
   collapse: {},
   expand: {},
   // Misc
-  align: L.center,
+  align: P.center,
   orderBy: null,
   roots: null,
   nodeMenu: null,
@@ -115,7 +115,7 @@ const $ = {
   miniMap: !1,
   lazyLoading: !0
 };
-class P {
+class E {
   constructor(t, e = 0) {
     this.id = t.id, this.data = t, this.level = e, this.prelim = 0, this.modifier = 0, this.shift = 0, this.change = 0, this.thread = null, this.ancestor = this, this.parent = null, this.children = [], this.partnerOf = null, this.isPartner = !1, this.x = 0, this.y = 0, this.w = 0, this.h = 0, this.leftNeighbor = null, this.rightNeighbor = null, this.collapsed = !1;
   }
@@ -148,7 +148,7 @@ class P {
     return this.thread || this.firstChild;
   }
 }
-class E {
+class C {
   /**
    * @param {object} cfg - layout konfiguratsiyasi
    * @param {number} cfg.levelSeparation
@@ -161,7 +161,7 @@ class E {
    * @param {number} nodeHeight
    */
   constructor(t, e = 140, i = 60) {
-    this.levelSep = t.levelSeparation ?? 60, this.siblingSep = t.siblingSeparation ?? 35, this.subtreeSep = t.subtreeSeparation ?? 40, this.partnerSep = t.partnerNodeSeparation ?? 15, this.orientation = t.orientation ?? _.top, this.layout = t.layout ?? $.normal, this.nodeW = e, this.nodeH = i;
+    this.levelSep = t.levelSeparation ?? 60, this.siblingSep = t.siblingSeparation ?? 35, this.subtreeSep = t.subtreeSeparation ?? 40, this.partnerSep = t.partnerNodeSeparation ?? 15, this.orientation = t.orientation ?? b.top, this.layout = t.layout ?? M.normal, this.nodeW = e, this.nodeH = i;
   }
   /**
    * Berilgan tugun ro'yxatini layout qiladi
@@ -173,110 +173,123 @@ class E {
     if (!t || t.length === 0) return /* @__PURE__ */ new Map();
     const i = /* @__PURE__ */ new Map();
     for (const c of t) {
-      const a = new P(c), l = e[c.id] || { w: this.nodeW, h: this.nodeH };
-      a.w = l.w, a.h = l.h, i.set(c.id, a);
+      const a = new E(c), d = e[c.id] || { w: this.nodeW, h: this.nodeH };
+      a.w = d.w, a.h = d.h, i.set(c.id, a);
     }
     for (const c of t)
       if (c.fid && c.mid) {
-        const a = i.get(c.fid), l = i.get(c.mid);
-        a && l && (a.data.pids = a.data.pids || [], l.data.pids = l.data.pids || [], a.data.pids.includes(c.mid) || a.data.pids.push(c.mid), l.data.pids.includes(c.fid) || l.data.pids.push(c.fid));
+        const a = i.get(c.fid), d = i.get(c.mid);
+        a && d && (a.data.pids = a.data.pids || [], d.data.pids = d.data.pids || [], a.data.pids.includes(c.mid) || a.data.pids.push(c.mid), d.data.pids.includes(c.fid) || d.data.pids.push(c.fid));
       }
     const s = (c) => !!(c.fid || c.mid), n = /* @__PURE__ */ new Set(), r = [];
     for (const [c, a] of i) {
       if (a.isPartner) continue;
-      const l = a.data.pids;
-      if (l && l.length > 0) {
+      const d = a.data.pids;
+      if (d && d.length > 0) {
         let h = a;
-        for (const w of l) {
-          const u = i.get(w);
-          u && s(u.data) && !s(h.data) && (h = u);
+        for (const u of d) {
+          const f = i.get(u);
+          f && s(f.data) && !s(h.data) && (h = f);
         }
         if (h !== a && !h.isPartner)
           continue;
-        let y = h.w;
-        for (const w of h.data.pids) {
-          const u = i.get(w);
-          if (!(!u || n.has(u.id) || u === h)) {
-            if (s(h.data) && s(u.data)) {
-              r.push({ left: u, right: h }), n.add(u.id);
+        let w = h.w;
+        for (const u of h.data.pids) {
+          const f = i.get(u);
+          if (!(!f || n.has(f.id) || f === h)) {
+            if (s(h.data) && s(f.data)) {
+              r.push({ left: f, right: h }), n.add(f.id);
               continue;
             }
-            u.isPartner = !0, u.partnerOf = h, y += u.w + this.partnerSep, n.add(u.id);
+            f.isPartner = !0, f.partnerOf = h, w += f.w + this.partnerSep, n.add(f.id);
           }
         }
-        h.effectiveW = y, h.originalW = h.w, h.w = y;
+        h.effectiveW = w, h.originalW = h.w, h.w = w;
       } else
         a.effectiveW = a.w, a.originalW = a.w;
     }
     for (const c of t) {
       const a = i.get(c.id);
-      let l = c.fid;
-      if ((!l || !i.has(l)) && (l = c.mid), l && i.has(l)) {
-        let h = i.get(l);
+      let d = c.fid;
+      if ((!d || !i.has(d)) && (d = c.mid), d && i.has(d)) {
+        let h = i.get(d);
         h.isPartner && h.partnerOf && (h = h.partnerOf), h.children.includes(a) || (h.children.push(a), a.parent || (a.parent = h));
       }
     }
-    const o = /* @__PURE__ */ new Set(), d = (c, a) => {
-      if (!o.has(c.id)) {
-        o.add(c.id), c.level = a;
-        for (const l of c.children) d(l, a + 1);
-      }
-    }, f = [];
+    const o = /* @__PURE__ */ new Map(), l = [];
     for (const [c, a] of i)
-      !a.parent && !a.isPartner && (f.push(a), d(a, 0));
-    const p = /* @__PURE__ */ new Map();
-    if (f.length > 0) {
+      if (!o.has(c))
+        for (o.set(c, 0), l.push(a); l.length > 0; ) {
+          const d = l.shift(), h = o.get(d.id), w = [d.data.fid, d.data.mid].filter(Boolean).map((u) => i.get(u)).filter(Boolean);
+          for (const u of w)
+            o.has(u.id) || (o.set(u.id, h - 1), l.push(u));
+          for (const [u, f] of i)
+            (f.data.fid === d.id || f.data.mid === d.id) && !o.has(u) && (o.set(u, h + 1), l.push(f));
+          if (d.data.pids)
+            for (const u of d.data.pids) {
+              const f = i.get(u);
+              f && !o.has(u) && (o.set(u, h), l.push(f));
+            }
+        }
+    let m = 1 / 0;
+    for (const c of o.values())
+      c < m && (m = c);
+    const p = [];
+    for (const [c, a] of i)
+      a.level = o.get(c) - m, !a.parent && !a.isPartner && p.push(a);
+    const _ = /* @__PURE__ */ new Map();
+    if (p.length > 0) {
       let c = 0;
-      for (let a = 0; a < f.length; a++) {
-        const l = f[a];
-        this._firstWalk(l), this._secondWalk(l, -l.prelim, 0);
-        const h = this._bounds(l);
-        this._shift(l, c - h.minX), c += h.maxX - h.minX + this.subtreeSep;
+      for (let a = 0; a < p.length; a++) {
+        const d = p[a];
+        this._firstWalk(d), this._secondWalk(d, -d.prelim);
+        const h = this._bounds(d);
+        this._shift(d, c - h.minX), c += h.maxX - h.minX + this.subtreeSep;
       }
-      for (const [a, l] of i) {
-        if (l.isPartner) continue;
-        l.originalW && (l.w = l.originalW);
-        const h = l.data.pids;
+      for (const [a, d] of i) {
+        if (d.isPartner) continue;
+        d.originalW && (d.w = d.originalW);
+        const h = d.data.pids;
         if (!h || h.length === 0) continue;
-        let y = l.w + this.partnerSep;
-        for (const w of h) {
-          const u = i.get(w);
-          !u || u.partnerOf !== l || (u.y = l.y, u.x = l.x + y, y += u.w + this.partnerSep);
+        let w = d.w + this.partnerSep;
+        for (const u of h) {
+          const f = i.get(u);
+          !f || f.partnerOf !== d || (f.y = d.y, f.x = d.x + w, w += f.w + this.partnerSep);
         }
       }
       for (const a of r) {
-        let { left: l, right: h } = a;
-        if (l.x > h.x) {
-          const m = l;
-          l = h, h = m;
+        let { left: d, right: h } = a;
+        if (d.x > h.x) {
+          const x = d;
+          d = h, h = x;
         }
-        const w = l.x + l.w + this.partnerSep - h.x;
-        let u = h;
-        for (; u.parent; ) u = u.parent;
-        for (const m of f)
-          m.x >= u.x && this._shift(m, w);
-        const S = l.children.filter((m) => m.data.fid === h.id || m.data.mid === h.id);
-        for (const m of S)
-          this._shift(m, Math.abs(h.w + this.partnerSep) / 2);
-        const M = h.children.filter((m) => m.data.fid === l.id || m.data.mid === l.id);
-        for (const m of M)
-          this._shift(m, -Math.abs(l.w + this.partnerSep) / 2);
+        const u = d.x + d.w + this.partnerSep - h.x;
+        let f = h;
+        for (; f.parent; ) f = f.parent;
+        for (const x of p)
+          x.x >= f.x && this._shift(x, u);
+        const $ = d.children.filter((x) => x.data.fid === h.id || x.data.mid === h.id);
+        for (const x of $)
+          this._shift(x, Math.abs(h.w + this.partnerSep) / 2);
+        const k = h.children.filter((x) => x.data.fid === d.id || x.data.mid === d.id);
+        for (const x of k)
+          this._shift(x, -Math.abs(d.w + this.partnerSep) / 2);
       }
       this._applyOrientation(i);
-      for (const [a, l] of i)
-        p.set(a, {
-          data: l.data,
-          partnerOf: l.partnerOf ? l.partnerOf.id : null,
+      for (const [a, d] of i)
+        _.set(a, {
+          data: d.data,
+          partnerOf: d.partnerOf ? d.partnerOf.id : null,
           // ID ni saqlash
-          x: Math.round(l.x),
-          y: Math.round(l.y),
-          w: l.w,
-          h: l.h,
-          level: l.level,
-          isPartner: l.isPartner
+          x: Math.round(d.x),
+          y: Math.round(d.y),
+          w: d.w,
+          h: d.h,
+          level: d.level,
+          isPartner: d.isPartner
         });
     }
-    return p;
+    return _;
   }
   _findRoots(t) {
     return [...t.values()].filter((e) => !e.parent && !e.isPartner);
@@ -306,17 +319,17 @@ class E {
   _apportion(t, e) {
     const i = t.leftSibling;
     if (!i) return e;
-    let s = t, n = t, r = i, o = t.parent.firstChild, d = s.modifier, f = n.modifier, p = r.modifier, c = o.modifier, a = this._nextRight(r), l = this._nextLeft(s);
-    for (; a && l; ) {
-      r = a, s = l, o = this._nextLeft(o), n = this._nextRight(n), n.ancestor = t;
-      const h = r.prelim + p - (s.prelim + d) + r.w + this.siblingSep;
-      if (h > 0) {
-        const y = this._ancestor(r, t, e);
-        this._moveSubtree(y, t, h), d += h, f += h;
+    let s = t, n = t, r = i, o = t.parent.firstChild, l = s.modifier, m = n.modifier, p = r.modifier, _ = o.modifier, c = this._nextRight(r), a = this._nextLeft(s);
+    for (; c && a; ) {
+      r = c, s = a, o = this._nextLeft(o), n = this._nextRight(n), n.ancestor = t;
+      const d = r.prelim + p - (s.prelim + l) + r.w + this.siblingSep;
+      if (d > 0) {
+        const h = this._ancestor(r, t, e);
+        this._moveSubtree(h, t, d), l += d, m += d;
       }
-      p += r.modifier, d += s.modifier, c += o ? o.modifier : 0, f += n.modifier, a = this._nextRight(r), l = this._nextLeft(s);
+      p += r.modifier, l += s.modifier, _ += o ? o.modifier : 0, m += n.modifier, c = this._nextRight(r), a = this._nextLeft(s);
     }
-    return a && !this._nextRight(n) && (n.thread = a, n.modifier += p - f), l && !this._nextLeft(o) && (o && (o.thread = l, o.modifier += d - c), e = t), e;
+    return c && !this._nextRight(n) && (n.thread = c, n.modifier += p - m), a && !this._nextLeft(o) && (o && (o.thread = a, o.modifier += l - _), e = t), e;
   }
   _nextLeft(t) {
     return t.children.length > 0 ? t.firstChild : t.thread;
@@ -351,12 +364,11 @@ class E {
   /**
    * Haqiqiy x, y koordinatalarni belgilash
    * m = yig'ilgan modifier qiymati
-   * depth = joriy daraja
    */
-  _secondWalk(t, e, i) {
-    t.x = t.prelim + e, t.y = i * (this.nodeH + this.levelSep), t.modifier = t.modifier || 0;
-    for (const s of t.children)
-      this._secondWalk(s, e + t.modifier, i + 1);
+  _secondWalk(t, e) {
+    t.x = t.prelim + e, t.y = t.level * (this.nodeH + this.levelSep), t.modifier = t.modifier || 0;
+    for (const i of t.children)
+      this._secondWalk(i, e + t.modifier);
   }
   // ─── Partner joylashuvi ────────────────────────────────────────────────
   /**
@@ -372,8 +384,8 @@ class E {
           const o = [i, r].sort().join("-");
           if (e.has(o)) continue;
           e.add(o);
-          const d = t.get(r);
-          d && (d.isPartner = !0, d.partnerOf = s, d.y = s.y, d.x = s.x + s.w + this.partnerSep, this._shiftRightOf(t, s, d.w + this.partnerSep));
+          const l = t.get(r);
+          l && (l.isPartner = !0, l.partnerOf = s, l.y = s.y, l.x = s.x + s.w + this.partnerSep, this._shiftRightOf(t, s, l.w + this.partnerSep));
         }
     }
   }
@@ -393,22 +405,22 @@ class E {
    * Yo'nalish asosida x,y larni aylantirish
    */
   _applyOrientation(t) {
-    if (this.orientation === _.top) return;
+    if (this.orientation === b.top) return;
     let e = 1 / 0, i = 1 / 0, s = -1 / 0, n = -1 / 0;
-    for (const [, d] of t)
-      e = Math.min(e, d.x), i = Math.min(i, d.y), s = Math.max(s, d.x + d.w), n = Math.max(n, d.y + d.h);
+    for (const [, l] of t)
+      e = Math.min(e, l.x), i = Math.min(i, l.y), s = Math.max(s, l.x + l.w), n = Math.max(n, l.y + l.h);
     const r = (e + s) / 2, o = (i + n) / 2;
-    for (const [, d] of t) {
-      const f = d.x - r, p = d.y - o;
+    for (const [, l] of t) {
+      const m = l.x - r, p = l.y - o;
       switch (this.orientation) {
-        case _.bottom:
-          d.y = o - p;
+        case b.bottom:
+          l.y = o - p;
           break;
-        case _.right:
-          [d.x, d.y] = [o + p, r - f], [d.w, d.h] = [d.h, d.w];
+        case b.right:
+          [l.x, l.y] = [o + p, r - m], [l.w, l.h] = [l.h, l.w];
           break;
-        case _.left:
-          [d.x, d.y] = [o - p, r + f], [d.w, d.h] = [d.h, d.w];
+        case b.left:
+          [l.x, l.y] = [o - p, r + m], [l.w, l.h] = [l.h, l.w];
           break;
       }
     }
@@ -425,31 +437,31 @@ class E {
     t.x += e, t.children.forEach((i) => this._shift(i, e));
   }
 }
-class C {
+class A {
   constructor(t, e = 140, i = 60) {
     this.columns = t.columns ?? 4, this.padH = t.siblingSeparation ?? 35, this.padV = t.levelSeparation ?? 60, this.nodeW = e, this.nodeH = i;
   }
   compute(t, e = {}) {
     const i = /* @__PURE__ */ new Map(), s = this.columns;
     return t.forEach((n, r) => {
-      const o = e[n.id] || { w: this.nodeW, h: this.nodeH }, d = Math.floor(r / s), f = r % s;
+      const o = e[n.id] || { w: this.nodeW, h: this.nodeH }, l = Math.floor(r / s), m = r % s;
       i.set(n.id, {
         data: n,
         partnerOf: null,
-        x: f * (o.w + this.padH),
-        y: d * (o.h + this.padV),
+        x: m * (o.w + this.padH),
+        y: l * (o.h + this.padV),
         w: o.w,
         h: o.h,
-        level: d,
+        level: l,
         isPartner: !1
       });
     }), i;
   }
 }
-function A(g, t, e) {
-  return g.layout === $.grid || g.layout === -1 ? new C(g, t, e) : new E(g, t, e);
+function O(g, t, e) {
+  return g.layout === M.grid || g.layout === -1 ? new A(g, t, e) : new C(g, t, e);
 }
-class O {
+class B {
   constructor(t, e) {
     this.container = typeof t == "string" ? document.querySelector(t) : t, this.config = e, this.svg = null, this.defs = null, this.linksGroup = null, this.nodesGroup = null, this._init();
   }
@@ -470,8 +482,8 @@ class O {
       const e = 1.1, i = t.deltaY < 0 ? 1 : -1;
       let s = this.transform.scale * (i > 0 ? e : 1 / e);
       s = Math.max(this.config.scaleMin, Math.min(this.config.scaleMax, s));
-      const n = this.container.getBoundingClientRect(), r = t.clientX - n.left, o = t.clientY - n.top, d = (r - this.transform.x) / this.transform.scale, f = (o - this.transform.y) / this.transform.scale;
-      this.transform.x = r - d * s, this.transform.y = o - f * s, this.transform.scale = s, this.updateViewBox();
+      const n = this.container.getBoundingClientRect(), r = t.clientX - n.left, o = t.clientY - n.top, l = (r - this.transform.x) / this.transform.scale, m = (o - this.transform.y) / this.transform.scale;
+      this.transform.x = r - l * s, this.transform.y = o - m * s, this.transform.scale = s, this.updateViewBox();
     }), this.svg.addEventListener("mousedown", (t) => {
       this.config.enablePan && (this.isDragging = !0, this.dragStart.x = t.clientX - this.transform.x, this.dragStart.y = t.clientY - this.transform.y, this.svg.style.cursor = "grabbing");
     }), window.addEventListener("mousemove", (t) => {
@@ -507,12 +519,12 @@ class O {
     const n = e + (s - e) / 2, r = 10;
     if (Math.abs(t - i) < 1)
       return `M ${t} ${e} L ${i} ${s}`;
-    const o = t < i ? 1 : -1, d = Math.min(r, Math.abs(n - e), Math.abs(i - t) / 2);
+    const o = t < i ? 1 : -1, l = Math.min(r, Math.abs(n - e), Math.abs(i - t) / 2);
     return `M ${t} ${e} 
-            L ${t} ${n - d} 
-            A ${d} ${d} 0 0 ${o === 1 ? 0 : 1} ${t + d * o} ${n} 
-            L ${i - d * o} ${n} 
-            A ${d} ${d} 0 0 ${o === 1 ? 1 : 0} ${i} ${n + d} 
+            L ${t} ${n - l} 
+            A ${l} ${l} 0 0 ${o === 1 ? 0 : 1} ${t + l * o} ${n} 
+            L ${i - l * o} ${n} 
+            A ${l} ${l} 0 0 ${o === 1 ? 1 : 0} ${i} ${n + l} 
             L ${i} ${s}`;
   }
   /**
@@ -520,29 +532,6 @@ class O {
    */
   drawLinks(t) {
     let e = "";
-    for (const [i, s] of t) {
-      const n = s.data;
-      if (n.pids && n.pids.length > 0)
-        for (const r of n.pids) {
-          const o = t.get(r);
-          if (o && o.x > s.x) {
-            const d = s.x + s.w, f = s.y + s.h / 2, p = o.x, c = o.y + o.h / 2, a = `M ${d} ${f} L ${p} ${c}`;
-            e += `<path d="${a}" stroke="#7B8290" stroke-width="2" fill="none" class="bft-link-partner" />`;
-          }
-        }
-      if (n.fid || n.mid) {
-        let r, o;
-        const d = n.fid ? t.get(n.fid) : null, f = n.mid ? t.get(n.mid) : null;
-        if (d && f) {
-          const p = d.x < f.x ? d : f, c = d.x < f.x ? f : d;
-          r = p.x + p.w + (c.x - (p.x + p.w)) / 2, o = p.y + p.h / 2;
-        } else d ? (r = d.x + d.w / 2, o = d.y + d.h) : f && (r = f.x + f.w / 2, o = f.y + f.h);
-        if (r !== void 0) {
-          const p = s.x + s.w / 2, c = s.y, a = this._calculateLinkPath(r, o, p, c);
-          e += `<path d="${a}" stroke="#7B8290" stroke-width="2" fill="none" class="bft-link" />`;
-        }
-      }
-    }
     this.linksGroup.innerHTML = e;
   }
   /**
@@ -551,7 +540,7 @@ class O {
   drawNodes(t, e) {
     let i = "";
     for (const [s, n] of t) {
-      const { x: r, y: o, w: d, h: f } = n, p = e(n.data, d, f);
+      const { x: r, y: o, w: l, h: m } = n, p = e(n.data, l, m);
       i += `
         <g data-n-id="${s}" class="bft-node" transform="translate(${r}, ${o})">
           ${p}
@@ -565,17 +554,17 @@ class O {
    */
   fitView(t) {
     let e = 1 / 0, i = 1 / 0, s = -1 / 0, n = -1 / 0;
-    for (const [, l] of t)
-      e = Math.min(e, l.x), i = Math.min(i, l.y), s = Math.max(s, l.x + l.w), n = Math.max(n, l.y + l.h);
+    for (const [, a] of t)
+      e = Math.min(e, a.x), i = Math.min(i, a.y), s = Math.max(s, a.x + a.w), n = Math.max(n, a.y + a.h);
     if (e === 1 / 0) return;
-    const r = this.container.clientWidth, o = this.container.clientHeight, d = s - e + this.config.padding * 2, f = n - i + this.config.padding * 2;
-    let p = Math.min(r / d, o / f);
+    const r = this.container.clientWidth, o = this.container.clientHeight, l = s - e + this.config.padding * 2, m = n - i + this.config.padding * 2;
+    let p = Math.min(r / l, o / m);
     p = Math.max(this.config.scaleMin, Math.min(this.config.scaleMax, p));
-    const c = (e + s) / 2, a = (i + n) / 2;
-    this.transform.scale = p, this.transform.x = r / 2 - c * p, this.transform.y = o / 2 - a * p, this.updateViewBox();
+    const _ = (e + s) / 2, c = (i + n) / 2;
+    this.transform.scale = p, this.transform.x = r / 2 - _ * p, this.transform.y = o / 2 - c * p, this.updateViewBox();
   }
 }
-class B {
+class H {
   constructor() {
     this.listeners = {};
   }
@@ -608,9 +597,9 @@ class B {
     return s;
   }
 }
-class N {
+class v {
   constructor(t, e = {}) {
-    this.element = typeof t == "string" ? document.querySelector(t) : t, this.config = { ...v, ...e }, e.anim && (this.config.anim = { ...v.anim, ...e.anim }), this.config.nodes = this.config.nodes || [], this.nodeWidth = 240, this.nodeHeight = 100, this.templateRenderer = this._defaultTemplate, this.renderer = new O(this.element, this.config), this.layoutEngine = A(this.config, this.nodeWidth, this.nodeHeight), this._emitter = new B(), this._idIndex = 0, this._selectedNodeId = null, this._initMenu(), this.config.nodes.length > 0 && this.draw();
+    this.element = typeof t == "string" ? document.querySelector(t) : t, this.config = { ...S, ...e }, e.anim && (this.config.anim = { ...S.anim, ...e.anim }), this.config.nodes = this.config.nodes || [], this.nodeWidth = 240, this.nodeHeight = 100, this.templateRenderer = this._defaultTemplate, this.renderer = new B(this.element, this.config), this.layoutEngine = O(this.config, this.nodeWidth, this.nodeHeight), this._emitter = new H(), this._idIndex = 0, this._selectedNodeId = null, this._initMenu(), this.config.nodes.length > 0 && this.draw();
   }
   // ============== VOQEALAR BOSHQRARUVI (EVENTS) ==============
   on(t, e) {
@@ -621,16 +610,16 @@ class N {
   }
   // ============== ASOSIY RENDERING API ==============
   load(t, e) {
-    this.config.nodes = t || [], this.draw(x.init), typeof e == "function" && e();
+    this.config.nodes = t || [], this.draw(y.init), typeof e == "function" && e();
   }
-  draw(t = x.update, e = {}, i) {
+  draw(t = y.update, e = {}, i) {
     const s = JSON.parse(JSON.stringify(this.config.nodes || []));
     if (this.config.nodeTreeMenu && this._selectedNodeId) {
       const r = s.find((o) => o.id == this._selectedNodeId);
       r && (s.push({ id: "temp_add_spouse", isPlaceholder: !0, placeholderAction: "spouse", targetId: r.id, pids: [r.id], tags: ["placeholder"] }), s.push({ id: "temp_add_son", isPlaceholder: !0, placeholderAction: "son", targetId: r.id, fid: r.id, tags: ["placeholder"] }), s.push({ id: "temp_add_daughter", isPlaceholder: !0, placeholderAction: "daughter", targetId: r.id, fid: r.id, tags: ["placeholder"] }), !r.fid && !r.mid && (s.push({ id: "temp_add_parent", isPlaceholder: !0, placeholderAction: "parent", targetId: r.id, tags: ["placeholder"] }), r.fid = "temp_add_parent"));
     }
     const n = this.layoutEngine.compute(s);
-    this.renderer.clear(), this.renderer.drawLinks(n), this.renderer.drawNodes(n, (r, o, d) => r.isPlaceholder ? this._placeholderTemplate(r, o, d) : this.templateRenderer(r, o, d)), t === x.init && this.renderer.fitView(n), typeof i == "function" && i();
+    this.renderer.clear(), this.renderer.drawLinks(n), this.renderer.drawNodes(n, (r, o, l) => r.isPlaceholder ? this._placeholderTemplate(r, o, l) : this.templateRenderer(r, o, l)), t === y.init && this.renderer.fitView(n), typeof i == "function" && i();
   }
   setTemplateRenderer(t) {
     this.templateRenderer = t;
@@ -652,7 +641,7 @@ class N {
       if (i) {
         t.stopPropagation();
         const n = i.getAttribute("data-id");
-        this._selectedNodeId = this._selectedNodeId === n ? null : n, this.draw(x.update);
+        this._selectedNodeId = this._selectedNodeId === n ? null : n, this.draw(y.update);
         return;
       }
       const s = t.target.closest(".bft-placeholder");
@@ -662,7 +651,7 @@ class N {
         this._handlePlaceholderClick(n, r);
         return;
       }
-      t.target.closest(".node") || this._selectedNodeId && (this._selectedNodeId = null, this.draw(x.update));
+      t.target.closest(".node") || this._selectedNodeId && (this._selectedNodeId = null, this.draw(y.update));
     }));
   }
   _handlePlaceholderClick(t, e) {
@@ -689,15 +678,15 @@ class N {
         updateNodesData: [{ id: e, fid: i }],
         removeNodeId: null
       });
-      this._selectedNodeId = null, s && this._emitter.emit("update", this, s), this.draw(x.update);
+      this._selectedNodeId = null, s && this._emitter.emit("update", this, s), this.draw(y.update);
     }
   }
   _showMenu(t, e) {
     this.menuElement.innerHTML = "";
     for (const n in this.config.nodeMenu) {
       const r = this.config.nodeMenu[n], o = document.createElement("div");
-      o.style.cssText = "padding: 10px 16px; color: #ddd; cursor: pointer; font-size: 14px; border-bottom: 1px solid #363636; display: flex; align-items: center; gap: 8px; transition: background 0.2s;", o.onmouseover = () => o.style.background = "#363636", o.onmouseout = () => o.style.background = "transparent", o.innerHTML = r.text || n, o.onclick = (d) => {
-        d.stopPropagation(), this.menuElement.style.display = "none", r.onClick && r.onClick(e);
+      o.style.cssText = "padding: 10px 16px; color: #ddd; cursor: pointer; font-size: 14px; border-bottom: 1px solid #363636; display: flex; align-items: center; gap: 8px; transition: background 0.2s;", o.onmouseover = () => o.style.background = "#363636", o.onmouseout = () => o.style.background = "transparent", o.innerHTML = r.text || n, o.onclick = (l) => {
+        l.stopPropagation(), this.menuElement.style.display = "none", r.onClick && r.onClick(e);
       }, this.menuElement.appendChild(o);
     }
     this.renderer.container.getBoundingClientRect();
@@ -807,17 +796,17 @@ class N {
   updateNode(t, e, i = !0) {
     const s = { addNodesData: [], updateNodesData: [t], removeNodeId: null };
     if (i && this._emitter.emit("update", this, s) === !1) return !1;
-    this.update(t), this.draw(x.update, {}, e);
+    this.update(t), this.draw(y.update, {}, e);
   }
   removeNode(t, e, i = !0) {
     const s = { addNodesData: [], updateNodesData: [], removeNodeId: t };
     if (i && this._emitter.emit("update", this, s) === !1) return !1;
-    this.remove(t), this.draw(x.update, {}, e);
+    this.remove(t), this.draw(y.update, {}, e);
   }
   addNode(t, e, i = !0) {
     const s = { addNodesData: [t], updateNodesData: [], removeNodeId: null };
     if (i && this._emitter.emit("update", this, s) === !1) return !1;
-    this.add(t), this.draw(x.insert, {}, e);
+    this.add(t), this.draw(y.insert, {}, e);
   }
   addChildNode(t, e, i = !0) {
     t.id == null && (t.id = this.generateId()), this.addNode(t, e, i);
@@ -832,7 +821,7 @@ class N {
       removeNodeId: null
     };
     if (n && this._emitter.emit("update", this, o) === !1) return !1;
-    this.add(e).add(i).update(r), this.draw(x.update, {}, s);
+    this.add(e).add(i).update(r), this.draw(y.update, {}, s);
   }
   addPartnerNode(t, e, i = !0) {
     t.id == null && (t.id = this.generateId());
@@ -840,7 +829,7 @@ class N {
     n && (n.pids = n.pids || [], n.pids.includes(t.id) || n.pids.push(t.id), r.push(n));
     const o = { addNodesData: [t], updateNodesData: r, removeNodeId: null };
     if (i && this._emitter.emit("update", this, o) === !1) return !1;
-    this.add(t), n && this.update(n), this.draw(x.insert, {}, e);
+    this.add(t), n && this.update(n), this.draw(y.insert, {}, e);
   }
   addParentNode(t, e, i, s, n = !0) {
     i.id == null && (i.id = this.generateId());
@@ -849,17 +838,17 @@ class N {
     r[e] = i.id;
     const o = { addNodesData: [i], updateNodesData: [r], removeNodeId: null };
     if (n && this._emitter.emit("update", this, o) === !1) return !1;
-    this.add(i), this.update(r), this.draw(x.insert, {}, s);
+    this.add(i), this.update(r), this.draw(y.insert, {}, s);
   }
 }
-b(N, "action", x), b(N, "layout", $), b(N, "orientation", _), b(N, "icon", {
+N(v, "action", y), N(v, "layout", M), N(v, "orientation", b), N(v, "icon", {
   edit: (t, e, i) => `<svg width="${t}" height="${e}" fill="${i}"><path d=""/></svg>`,
   details: (t, e, i) => `<svg width="${t}" height="${e}" fill="${i}"><path d=""/></svg>`,
   remove: (t, e, i) => `<svg width="${t}" height="${e}" fill="${i}"><path d=""/></svg>`
-}), b(N, "templates", {
+}), N(v, "templates", {
   tommy: { node: "", plus: "", minus: "" }
 });
-typeof window < "u" && (window.FamilyTree = N);
+typeof window < "u" && (window.FamilyTree = v);
 export {
-  N as FamilyTree
+  v as FamilyTree
 };

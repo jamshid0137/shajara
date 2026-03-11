@@ -42,7 +42,9 @@ public class SecurityConfig {
             "/index.html",
             "/*.html",
             "/*.css",
-            "/*.js"
+            "/*.js",
+            // v3 — to'liq daraxt moduli (tree3.html + app3.js)
+            "/v3/**"
     };
 
     @Bean

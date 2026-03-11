@@ -219,21 +219,62 @@ export class TreeLayout {
       }
     }
 
-    // Level belgilash
-    const visited = new Set();
-    const assignLevel = (node, lvl) => {
-      if (visited.has(node.id)) return;
-      visited.add(node.id);
-      node.level = lvl;
-      for (const child of node.children) assignLevel(child, lvl + 1);
-    };
+    // Level belgilash: Global generation synchronization (Huddi FamilyTreeJS kabi)
+    const visitedLevels = new Map();
+    const processQueue = [];
 
+    for (const [id, startNode] of nodeMap) {
+       if (visitedLevels.has(id)) continue;
+       
+       visitedLevels.set(id, 0);
+       processQueue.push(startNode);
+       
+       while (processQueue.length > 0) {
+           const curr = processQueue.shift();
+           const currLvl = visitedLevels.get(curr.id);
+           
+           // UP: parents
+           const parents = [curr.data.fid, curr.data.mid].filter(Boolean).map(pid => nodeMap.get(pid)).filter(Boolean);
+           for (const p of parents) {
+               if (!visitedLevels.has(p.id)) {
+                   visitedLevels.set(p.id, currLvl - 1);
+                   processQueue.push(p);
+               }
+           }
+           
+           // DOWN: children
+           for (const [cid, cNode] of nodeMap) {
+               if ((cNode.data.fid === curr.id || cNode.data.mid === curr.id) && !visitedLevels.has(cid)) {
+                   visitedLevels.set(cid, currLvl + 1);
+                   processQueue.push(cNode);
+               }
+           }
+           
+           // SAME: spouses
+           if (curr.data.pids) {
+               for (const pid of curr.data.pids) {
+                   const pNode = nodeMap.get(pid);
+                   if (pNode && !visitedLevels.has(pid)) {
+                       visitedLevels.set(pid, currLvl);
+                       processQueue.push(pNode);
+                   }
+               }
+           }
+       }
+    }
+
+    // Min levelni 0 ga tenglash
+    let minLvl = Infinity;
+    for (const lvl of visitedLevels.values()) {
+        if (lvl < minLvl) minLvl = lvl;
+    }
+    
     const roots = [];
     for (const [id, n] of nodeMap) {
-      if (!n.parent && !n.isPartner) {
-          roots.push(n);
-          assignLevel(n, 0);
-      }
+        n.level = visitedLevels.get(id) - minLvl;
+        if (!n.parent && !n.isPartner) {
+            roots.push(n);
+        }
     }
 
     // Qolgan bosqichlar...
@@ -243,7 +284,7 @@ export class TreeLayout {
       for (let i = 0; i < roots.length; i++) {
         const root = roots[i];
         this._firstWalk(root);
-        this._secondWalk(root, -root.prelim, 0);
+        this._secondWalk(root, -root.prelim);
 
         const bounds = this._bounds(root);
         this._shift(root, currentOffsetX - bounds.minX);
@@ -489,15 +530,18 @@ export class TreeLayout {
   /**
    * Haqiqiy x, y koordinatalarni belgilash
    * m = yig'ilgan modifier qiymati
-   * depth = joriy daraja
    */
-  _secondWalk(v, m, depth) {
+  _secondWalk(v, m) {
     v.x = v.prelim + m;
-    v.y = depth * (this.nodeH + this.levelSep);
+    
+    // Yechim: FamilyTree JS kabi sof level asosida qat'iy qavat berish
+    // Dastlabki depth arg da ishlayotganda levelni buzmagan
+    v.y = v.level * (this.nodeH + this.levelSep);
+    
     v.modifier = v.modifier || 0;
 
     for (const child of v.children) {
-      this._secondWalk(child, m + v.modifier, depth + 1);
+      this._secondWalk(child, m + v.modifier);
     }
   }
 
