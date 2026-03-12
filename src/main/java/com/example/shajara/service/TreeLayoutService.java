@@ -175,43 +175,29 @@ public class TreeLayoutService {
     }
 
     // =========================================================
-    // TURMUSH O'RTOQLARI — ikki tomonda vertikal ustun
-    // 0-chi: o'ng, 1-chi: chap, 2-chi: o'ng ...
+    // TURMUSH O'RTOQLARI — markaziy shaxs bilan bir qatorda (Y=0)
     // =========================================================
     private void placeSpouses(Person center,
             Map<Long, TreeNodeDto> nodeMap,
             List<TreeLayoutResponseDto.ConnectionDto> connections,
             Set<Long> visited) {
         List<Person> spouses = relationRepository.findAllSpousesNative(center.getId());
-        if (spouses == null || spouses.isEmpty())
-            return;
+        if (spouses == null || spouses.isEmpty()) return;
 
-        double step = NODE_H + PARTNER_V_GAP;
         int rightIdx = 0;
-        int leftIdx = 0;
 
         for (int i = 0; i < spouses.size(); i++) {
             Person spouse = spouses.get(i);
-            if (visited.contains(spouse.getId()))
-                continue;
+            if (visited.contains(spouse.getId())) continue;
 
-            double x, y;
-            if (i % 2 == 0) {
-                // O'ng tomonga: CENTER right edge (200) + H_GAP (40) = 240
-                x = RIGHT_COL_X;
-                y = rightIdx * step;
-                rightIdx++;
-            } else {
-                // Chap tomonga: CENTER left edge (0) - H_GAP (40) - NODE_W (200) = -240
-                x = LEFT_COL_X;
-                y = leftIdx * step;
-                leftIdx++;
-            }
+            double x = RIGHT_COL_X + (rightIdx * (NODE_W + H_GAP));
+            double y = 0;
+            rightIdx++;
 
             addNode(nodeMap, visited, spouse, x, y, "SPOUSE");
             connections.add(conn(center.getId(), spouse.getId(), "SPOUSE"));
 
-            // ===== YANGILIK: SPOUSE ning ham OTA-ONASINI QO'SHISH =====
+            // ===== SPOUSE NING OTA-ONASI =====
             if (spouse.getFatherId() != null) {
                 personRepository.findById(spouse.getFatherId()).ifPresent(father -> {
                     if (!visited.contains(father.getId())) {
@@ -226,7 +212,6 @@ public class TreeLayoutService {
                     if (!visited.contains(mother.getId())) {
                         addNode(nodeMap, visited, mother, x - (NODE_W / 2.0), y - V_SPACE, "MOTHER");
                         connections.add(conn(mother.getId(), spouse.getId(), "PARENT_CHILD"));
-                        // Ota va ona o'rtasida SPOUSE liniyasi
                         if (spouse.getFatherId() != null) {
                             connections.add(conn(spouse.getFatherId(), mother.getId(), "SPOUSE"));
                         }
@@ -234,20 +219,16 @@ public class TreeLayoutService {
                 });
             }
 
-            // ===== YANGILIK 2: SPOUSE NING O'Z (BOSHQA) FARZANDLARINI HAM QO'SHISH =====
+            // ===== SPOUSE NING O'Z (BOSHQA) FARZANDLARI =====
             List<Person> spouseChildren = personRepository.findAllByFatherIdOrMotherId(spouse.getId(), spouse.getId());
             int childCount = 0;
             for (Person spChild : spouseChildren) {
                 if (!visited.contains(spChild.getId())) {
-                    // Spousening tagiga joylaymiz
-                    double spChildX = x + (childCount * (NODE_W + CHILD_GAP))
-                            - ((spouseChildren.size() * NODE_W) / 2.0);
+                    double spChildX = x + (childCount * (NODE_W + CHILD_GAP)) - ((spouseChildren.size() * NODE_W) / 2.0);
                     addNode(nodeMap, visited, spChild, spChildX, y + V_SPACE, "CHILD");
                     connections.add(conn(spouse.getId(), spChild.getId(), "PARENT_CHILD"));
                     childCount++;
 
-                    // Farzandning 2-chi ota-onasi: agar visited bo'lsa ulaymiz,
-                    // agar yo'q bo'lsa ham node qo'shib ulaymiz
                     if (spChild.getFatherId() != null && !spChild.getFatherId().equals(spouse.getId())) {
                         Long otherId = spChild.getFatherId();
                         if (visited.contains(otherId)) {
@@ -275,24 +256,22 @@ public class TreeLayoutService {
                 }
             }
 
-            // ===== YANGILIK 3: SPOUSE NING O'ZINING BOSHQA SPOUSELARINI HAM QO'SHISH =====
+            // ===== SPOUSE NING BOSHQA SPOUSELARI =====
             List<Person> otherSpouses = relationRepository.findAllSpousesNative(spouse.getId());
             int otherSpouseCount = 0;
             for (Person other : otherSpouses) {
                 if (!visited.contains(other.getId()) && !other.getId().equals(center.getId())) {
-                    double otherX = x + (otherSpouseCount % 2 == 0 ? NODE_W + H_GAP : -(NODE_W + H_GAP));
-                    addNode(nodeMap, visited, other, otherX, y + PARTNER_V_GAP * 2, "SPOUSE");
+                    double otherX = x + NODE_W + H_GAP + (otherSpouseCount * (NODE_W + H_GAP));
+                    addNode(nodeMap, visited, other, otherX, y, "SPOUSE");
                     connections.add(conn(spouse.getId(), other.getId(), "SPOUSE"));
                     otherSpouseCount++;
+                    rightIdx++;
 
-                    // Bu boshqa spouse uchun ham farzandlar bilan bog'lanish tekshirish
                     for (Person spChild : spouseChildren) {
-                        if (spChild.getFatherId() != null && spChild.getFatherId().equals(other.getId())
-                                && visited.contains(spChild.getId())) {
+                        if (spChild.getFatherId() != null && spChild.getFatherId().equals(other.getId()) && visited.contains(spChild.getId())) {
                             connections.add(conn(other.getId(), spChild.getId(), "PARENT_CHILD"));
                         }
-                        if (spChild.getMotherId() != null && spChild.getMotherId().equals(other.getId())
-                                && visited.contains(spChild.getId())) {
+                        if (spChild.getMotherId() != null && spChild.getMotherId().equals(other.getId()) && visited.contains(spChild.getId())) {
                             connections.add(conn(other.getId(), spChild.getId(), "PARENT_CHILD"));
                         }
                     }
@@ -302,30 +281,32 @@ public class TreeLayoutService {
     }
 
     // =========================================================
-    // AKA-UKALAR — bir xil ota yoki onadan
-    // (Center dan chapda, alohida ustunda)
+    // AKA-UKALAR — markaziy shaxs bilan bir qatorda (chaproqda, Y=0)
     // =========================================================
     private void placeSiblings(Person center,
             Map<Long, TreeNodeDto> nodeMap,
             List<TreeLayoutResponseDto.ConnectionDto> connections,
             Set<Long> visited) {
-        if (center.getFatherId() == null && center.getMotherId() == null)
-            return;
+        if (center.getFatherId() == null && center.getMotherId() == null) return;
 
-        // Bir xil ota yoki onadan bo'lgan odamlarni topamiz
         Long fId = center.getFatherId() != null ? center.getFatherId() : -1L;
         Long mId = center.getMotherId() != null ? center.getMotherId() : -1L;
         List<Person> siblings = personRepository.findAllByFatherIdOrMotherId(fId, mId);
 
-        double step = NODE_H + PARTNER_V_GAP;
-        double sibX = LEFT_COL_X - 2 * NODE_W - H_GAP;
-        int count = 0;
+        double sibXBase = LEFT_COL_X;
 
         for (Person s : siblings) {
-            if (s.getId().equals(center.getId()) || visited.contains(s.getId()))
-                continue;
+            if (s.getId().equals(center.getId()) || visited.contains(s.getId())) continue;
 
-            addNode(nodeMap, visited, s, sibX, count * step, "SIBLING");
+            List<Person> siblingSpouses = relationRepository.findAllSpousesNative(s.getId());
+            
+            // SibX calculation: we move left by enough space for sibling + their spouses
+            int slotCount = 1 + siblingSpouses.size();
+            sibXBase -= (slotCount * (NODE_W + H_GAP));
+            
+            double currX = sibXBase;
+
+            addNode(nodeMap, visited, s, currX, 0, "SIBLING");
 
             if (center.getFatherId() != null) {
                 connections.add(conn(center.getFatherId(), s.getId(), "PARENT_CHILD"));
@@ -334,12 +315,11 @@ public class TreeLayoutService {
             }
 
             // AKA-UKANING SPOUSE LARI
-            List<Person> siblingSpouses = relationRepository.findAllSpousesNative(s.getId());
             for (int k = 0; k < siblingSpouses.size(); k++) {
                 Person sbSp = siblingSpouses.get(k);
                 if (!visited.contains(sbSp.getId())) {
-                    double sbSpX = sibX - (NODE_W + H_GAP);
-                    addNode(nodeMap, visited, sbSp, sbSpX, count * step, "SPOUSE");
+                    currX += NODE_W + H_GAP;
+                    addNode(nodeMap, visited, sbSp, currX, 0, "SPOUSE");
                     connections.add(conn(s.getId(), sbSp.getId(), "SPOUSE"));
                 }
             }
@@ -347,23 +327,21 @@ public class TreeLayoutService {
             // AKA-UKANING NEVARALARI (Children of sibling)
             List<Person> siblingChildren = personRepository.findAllByFatherIdOrMotherId(s.getId(), s.getId());
             int scCount = 0;
+            double childStartX = sibXBase - ((siblingChildren.size() * NODE_W) / 2.0);
             for (Person sc : siblingChildren) {
                 if (!visited.contains(sc.getId())) {
-                    addNode(nodeMap, visited, sc, sibX + (scCount * 20), (count * step) + V_SPACE, "CHILD");
+                    addNode(nodeMap, visited, sc, childStartX + (scCount * (NODE_W + CHILD_GAP)), V_SPACE, "CHILD");
                     connections.add(conn(s.getId(), sc.getId(), "PARENT_CHILD"));
                     scCount++;
-                    // Onasi/Otasi tekshiruvi
-                    if (sc.getFatherId() != null && !sc.getFatherId().equals(s.getId())
-                            && visited.contains(sc.getFatherId())) {
+
+                    if (sc.getFatherId() != null && !sc.getFatherId().equals(s.getId()) && visited.contains(sc.getFatherId())) {
                         connections.add(conn(sc.getFatherId(), sc.getId(), "PARENT_CHILD"));
                     }
-                    if (sc.getMotherId() != null && !sc.getMotherId().equals(s.getId())
-                            && visited.contains(sc.getMotherId())) {
+                    if (sc.getMotherId() != null && !sc.getMotherId().equals(s.getId()) && visited.contains(sc.getMotherId())) {
                         connections.add(conn(sc.getMotherId(), sc.getId(), "PARENT_CHILD"));
                     }
                 }
             }
-            count++;
         }
     }
 

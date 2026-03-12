@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shajara - Oflayn D3.js</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>Shajara <span style="font-size: 14px; font-weight: normal; color: #94a3b8;">(D3.js)</span></h1>
+            <div class="controls" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <input id="tokenInput" type="password" placeholder="🔑 Bearer Token" style="padding: 6px; border-radius: 6px; border: 1px solid #ccc; font-family: inherit;">
+                <input id="treeIdInput" type="number" placeholder="🆔 Tree ID" style="padding: 6px; border-radius: 6px; border: 1px solid #ccc; width: 90px; font-family: inherit;">
+                <input id="personIdInput" type="number" placeholder="👤 Person ID" style="padding: 6px; border-radius: 6px; border: 1px solid #ccc; width: 100px; font-family: inherit;">
+                <button id="btn-load-tree" style="padding: 6px 14px; border-radius: 6px; background: #3b82f6; color: white; border: none; cursor: pointer; font-weight: bold;">Yuklash</button>
+                <div style="width: 1px; height: 24px; background: #ccc; margin: 0 4px;"></div>
+                <button id="btn-zoom-in">Zoom +</button>
+                <button id="btn-zoom-out">Zoom -</button>
+                <button id="btn-center">Markazga</button>
+            </div>
+        </header>
+        <div id="tree-container"></div>
+    </div>
+    
+    <!-- Oflayn d3 kutubxonasi kafolatlangan ishlaydi -->
+    <script src="d3.v7.min.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>

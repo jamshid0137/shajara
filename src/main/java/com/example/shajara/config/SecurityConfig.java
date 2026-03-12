@@ -44,7 +44,11 @@ public class SecurityConfig {
             "/*.css",
             "/*.js",
             // v3 — to'liq daraxt moduli (tree3.html + app3.js)
-            "/v3/**"
+            "/v3/**",
+            // v4 — o'z SVG rendereri, FamilyTree.js siz
+            "/v4/**",
+            "/tree5/**",
+            "/api/layout/**"
     };
 
     @Bean

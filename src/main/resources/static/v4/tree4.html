@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shajara v4 — SVG Renderer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#090918;--surface:#13132e;--card:#1a1a40;
+  --purple:#7c3aed;--blue:#3b82f6;--pink:#ec4899;--green:#10b981;
+  --text:#e2e8f0;--muted:#94a3b8;--border:rgba(124,58,237,.22);
+  --hdr:52px;
+}
+html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;
+  background:var(--bg);color:var(--text);overflow:hidden}
+
+/* HEADER */
+.hdr{position:fixed;top:0;left:0;right:0;height:var(--hdr);
+  background:rgba(9,9,24,.96);backdrop-filter:blur(18px);
+  border-bottom:1px solid var(--border);z-index:300;
+  display:flex;align-items:center;padding:0 14px;gap:10px}
+.logo{font-size:17px;font-weight:800;
+  background:linear-gradient(135deg,var(--purple),var(--pink));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;white-space:nowrap;user-select:none}
+.badge{font-size:9px;font-weight:700;background:linear-gradient(135deg,var(--purple),var(--blue));
+  color:#fff;padding:2px 7px;border-radius:20px;letter-spacing:.5px}
+.hdr-row{display:flex;gap:7px;flex:1;min-width:0}
+.inp{background:rgba(255,255,255,.05);border:1px solid var(--border);
+  border-radius:9px;color:var(--text);padding:6px 11px;font-size:12px;
+  outline:none;transition:.2s;min-width:0;font-family:inherit}
+.inp:focus{border-color:var(--purple);background:rgba(124,58,237,.1)}
+.inp::placeholder{color:var(--muted)}
+#tokenInput{flex:2}#treeIdInput{flex:1;max-width:110px}
+#searchInput{flex:1;max-width:160px}
+.btn{padding:6px 16px;border-radius:9px;border:none;font-size:12px;font-weight:600;
+  cursor:pointer;transition:.2s;white-space:nowrap;font-family:inherit;color:#fff;
+  background:linear-gradient(135deg,var(--purple),var(--blue))}
+.btn:hover{opacity:.85;transform:translateY(-1px)}
+
+/* CANVAS */
+#wrap{position:fixed;top:var(--hdr);left:0;right:0;bottom:0;overflow:hidden;
+  background:var(--bg);
+  background-image:radial-gradient(circle at 1px 1px,rgba(124,58,237,.04) 1px,transparent 0);
+  background-size:34px 34px}
+#wrap svg{width:100%;height:100%;display:block;cursor:default}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;z-index:500;transition:opacity .3s}
+#loading.hidden{opacity:0;pointer-events:none}
+.spin{width:44px;height:44px;border-radius:50%;
+  border:3px solid rgba(124,58,237,.15);border-top-color:var(--purple);
+  animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ERROR */
+#errModal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:rgba(12,12,32,.98);backdrop-filter:blur(20px);
+  border:1px solid rgba(239,68,68,.3);border-radius:16px;padding:28px;
+  text-align:center;z-index:600;max-width:380px;width:92%;display:none}
+#errModal.show{display:block}
+.err-icon{font-size:30px;margin-bottom:8px}
+.err-ttl{font-size:14px;font-weight:700;color:#f87171;margin-bottom:6px}
+#errMsg{font-size:12px;color:var(--muted);line-height:1.5;word-break:break-word}
+.err-btn{margin-top:16px;padding:7px 20px;border-radius:9px;
+  background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);
+  color:#f87171;cursor:pointer;font-size:12px;font-family:inherit}
+
+/* CONTEXT MENU */
+#ctx{position:fixed;z-index:400;display:none;
+  background:rgba(12,12,32,.97);backdrop-filter:blur(20px);
+  border:1px solid var(--border);border-radius:12px;
+  padding:5px;min-width:185px;box-shadow:0 10px 36px rgba(0,0,0,.6)}
+#ctx.show{display:block}
+.ci{display:flex;align-items:center;gap:8px;padding:7px 11px;
+  border-radius:8px;cursor:pointer;font-size:12px;color:var(--text);transition:.12s}
+.ci:hover{background:rgba(124,58,237,.22)}
+.ci.red:hover{background:rgba(239,68,68,.15);color:#f87171}
+.csep{height:1px;background:var(--border);margin:3px 8px}
+
+/* EDIT MODAL */
+#editModal{position:fixed;inset:0;z-index:500;display:none;
+  background:rgba(0,0,0,.55);backdrop-filter:blur(5px);
+  align-items:center;justify-content:center}
+#editModal.show{display:flex}
+.ebox{background:rgba(12,12,36,.98);backdrop-filter:blur(24px);
+  border:1px solid var(--border);border-radius:18px;
+  padding:28px;width:360px;max-width:94vw}
+.ettl{font-size:15px;font-weight:700;margin-bottom:18px;
+  background:linear-gradient(135deg,var(--purple),var(--pink));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.fr{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.fr label{font-size:10px;color:var(--muted);font-weight:600;
+  text-transform:uppercase;letter-spacing:.4px}
+.fr input{background:rgba(255,255,255,.06);border:1px solid var(--border);
+  border-radius:9px;color:var(--text);padding:8px 11px;font-size:12px;
+  outline:none;transition:.2s;font-family:inherit}
+.fr input:focus{border-color:var(--purple)}
+.eacts{display:flex;gap:9px;margin-top:18px}
+.esave,.ecancel{flex:1;padding:9px;border-radius:10px;border:none;
+  font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.esave{background:linear-gradient(135deg,var(--purple),var(--blue));color:#fff}
+.ecancel{background:rgba(255,255,255,.07);border:1px solid var(--border);color:var(--muted)}
+
+/* GENDER POPUP */
+#genderPopup{position:fixed;inset:0;z-index:600;display:none;
+  background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  align-items:center;justify-content:center}
+#genderPopup.show{display:flex}
+.gbox{background:rgba(12,12,36,.98);border:1px solid var(--border);
+  border-radius:18px;padding:26px;text-align:center;min-width:250px}
+.gttl{font-size:14px;font-weight:700;margin-bottom:16px}
+.gbtns{display:flex;gap:10px;justify-content:center}
+.gbtn{padding:10px 20px;border-radius:12px;border:none;font-size:12px;
+  font-weight:700;cursor:pointer;font-family:inherit;transition:.15s}
+.gbtn:hover{transform:translateY(-2px)}
+.gm{background:linear-gradient(135deg,#2563eb,#6366f1);color:#fff}
+.gf{background:linear-gradient(135deg,#f97316,#ec4899);color:#fff}
+.gc{background:rgba(255,255,255,.08);border:1px solid var(--border);color:var(--muted)}
+
+/* STATS */
+#stats{position:fixed;bottom:14px;left:14px;z-index:200;
+  background:rgba(12,12,32,.92);backdrop-filter:blur(16px);
+  border:1px solid var(--border);border-radius:12px;
+  padding:9px 14px;display:none;gap:16px}
+.sv{display:flex;flex-direction:column;align-items:center;gap:1px}
+.sv-n{font-size:16px;font-weight:800;
+  background:linear-gradient(135deg,var(--purple),var(--pink));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sv-l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+
+/* ZOOM */
+#zc{position:fixed;right:14px;bottom:14px;z-index:200;display:flex;flex-direction:column;gap:5px}
+.zb{width:34px;height:34px;border-radius:9px;border:1px solid var(--border);
+  background:rgba(12,12,32,.92);backdrop-filter:blur(14px);
+  color:var(--text);font-size:17px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:.12s;font-family:inherit;user-select:none}
+.zb:hover{background:rgba(124,58,237,.3);border-color:var(--purple)}
+
+/* SVG node hover */
+.ft-node{cursor:pointer}
+.ft-node .nbg{transition:filter .12s}
+.ft-node:hover .nbg{filter:brightness(1.18)}
+.collapse-btn{cursor:pointer;opacity:.7;transition:opacity .15s}
+.collapse-btn:hover{opacity:1}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="logo">🌳 Shajara</div>
+  <span class="badge">v4</span>
+  <div class="hdr-row">
+    <input id="tokenInput"  class="inp" type="password" placeholder="🔑 Bearer Token">
+    <input id="treeIdInput" class="inp" type="number"   placeholder="🆔 Tree ID">
+    <input id="searchInput" class="inp" type="text"     placeholder="🔍 Qidirish...">
+    <button class="btn" onclick="loadTree()">Yuklash</button>
+  </div>
+</header>
+
+<div id="wrap">
+  <svg id="svg" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="gm" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%"   stop-color="#1e3a8a"/>
+        <stop offset="100%" stop-color="#3b82f6"/>
+      </linearGradient>
+      <linearGradient id="gf" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%"   stop-color="#7c2d72"/>
+        <stop offset="100%" stop-color="#ec4899"/>
+      </linearGradient>
+      <filter id="sh">
+        <feDropShadow dx="0" dy="3" stdDeviation="7" flood-color="rgba(0,0,0,.5)"/>
+      </filter>
+      <filter id="shc">
+        <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="rgba(124,58,237,.65)"/>
+      </filter>
+    </defs>
+    <g id="vp">
+      <g id="lc"></g>
+      <g id="ln"></g>
+    </g>
+  </svg>
+</div>
+
+<div id="loading">
+  <div class="spin"></div>
+  <div style="font-size:12px;color:var(--muted)">Yuklanmoqda...</div>
+</div>
+
+<div id="errModal">
+  <div class="err-icon">⚠️</div>
+  <div class="err-ttl">Xatolik</div>
+  <div id="errMsg"></div>
+  <button class="err-btn" onclick="hideErr()">Yopish</button>
+</div>
+
+<div id="ctx">
+  <div class="ci" onclick="ctxFocus()">     📂 Ko'rsatish (markaz)</div>
+  <div class="ci" onclick="ctxCollapse()">  🔽 Bolalarni yashir/ko'rsat</div>
+  <div class="ci" onclick="ctxHideParent()">🔼 Ota-onani yashir/ko'rsat</div>
+  <div class="csep"></div>
+  <div class="ci" onclick="ctxParent()">    ➕ Ota-ona qo'sh</div>
+  <div class="ci" onclick="ctxSpouse()">    💑 Juft qo'sh</div>
+  <div class="ci" onclick="ctxChild()">     👶 Farzand qo'sh</div>
+  <div class="csep"></div>
+  <div class="ci" onclick="ctxEdit()">      ✏️ Tahrirlash</div>
+  <div class="ci red" onclick="ctxDelete()">🗑️ O'chirish</div>
+</div>
+
+<div id="editModal">
+  <div class="ebox">
+    <div class="ettl">✏️ Tahrirlash</div>
+    <div class="fr"><label>Ism</label><input id="ef-name"  type="text" placeholder="To'liq ism"></div>
+    <div class="fr"><label>Tug'ilgan</label><input id="ef-birth" type="date"></div>
+    <div class="fr"><label>Vafot</label><input id="ef-died"  type="date"></div>
+    <div class="fr"><label>Rasm URL</label><input id="ef-photo" type="url"  placeholder="https://..."></div>
+    <div class="eacts">
+      <button class="esave"   onclick="saveEdit()">💾 Saqlash</button>
+      <button class="ecancel" onclick="closeEdit()">✕ Bekor</button>
+    </div>
+  </div>
+</div>
+
+<div id="genderPopup">
+  <div class="gbox">
+    <div class="gttl">👶 Farzand jinsi</div>
+    <div class="gbtns">
+      <button class="gbtn gm" onclick="confirmChild('MALE')">  👦 O'g'il</button>
+      <button class="gbtn gf" onclick="confirmChild('FEMALE')">👧 Qiz</button>
+      <button class="gbtn gc" onclick="closeGender()">         ✕</button>
+    </div>
+  </div>
+</div>
+
+<div id="stats" style="display:none">
+  <div class="sv"><span class="sv-n" id="sT">0</span><span class="sv-l">Jami</span></div>
+  <div class="sv"><span class="sv-n" id="sM">0</span><span class="sv-l">Erkak</span></div>
+  <div class="sv"><span class="sv-n" id="sF">0</span><span class="sv-l">Ayol</span></div>
+  <div class="sv"><span class="sv-n" id="sS">0</span><span class="sv-l">Juft</span></div>
+</div>
+
+<div id="zc">
+  <button class="zb" onclick="zoomIn()" title="+">＋</button>
+  <button class="zb" onclick="fitView()" title="Mos">⊡</button>
+  <button class="zb" onclick="zoomOut()" title="−">−</button>
+</div>
+
+<script src="/v4/app4.js"></script>
+</body>
+</html>
