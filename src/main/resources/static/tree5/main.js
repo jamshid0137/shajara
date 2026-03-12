@@ -136,6 +136,56 @@ function drawNodes(nodesArray) {
             let text = `${role} ${bDate ? '(' + bDate + ')' : ''}`.trim();
             return text || "Ma'lumot yo'q";
         });
+
+    // + Tugmasi (Qo'shish)
+    const addBtn = nodeEnter.append('g')
+        .attr('class', 'add-btn')
+        .attr('transform', `translate(${nodeWidth / 2 - 20}, ${-nodeHeight / 2 + 18})`)
+        .style('cursor', 'pointer')
+        .on('click', (event, d) => {
+            event.stopPropagation();
+            showContextMenu(event, d, 'add');
+        });
+
+    addBtn.append('circle')
+        .attr('r', 12)
+        .attr('fill', 'rgba(255,255,255,0.05)')
+        .on('mouseover', function() { d3.select(this).attr('fill', 'rgba(59, 130, 246, 0.4)'); })
+        .on('mouseout', function() { d3.select(this).attr('fill', 'rgba(255,255,255,0.05)'); });
+        
+    addBtn.append('text')
+        .text('+')
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('fill', '#94a3b8')
+        .attr('font-size', '20px')
+        .attr('font-weight', 'bold')
+        .attr('y', 0);
+
+    // ⋮ Tugmasi (Tahrirlash / O'chirish) - Pastki qismda
+    const editBtn = nodeEnter.append('g')
+        .attr('class', 'edit-btn')
+        .attr('transform', `translate(${nodeWidth / 2 - 20}, ${nodeHeight / 2 - 18})`)
+        .style('cursor', 'pointer')
+        .on('click', (event, d) => {
+            event.stopPropagation();
+            showContextMenu(event, d, 'edit');
+        });
+
+    editBtn.append('circle')
+        .attr('r', 12)
+        .attr('fill', 'rgba(255,255,255,0.05)')
+        .on('mouseover', function() { d3.select(this).attr('fill', 'rgba(239, 68, 68, 0.2)'); })
+        .on('mouseout', function() { d3.select(this).attr('fill', 'rgba(255,255,255,0.05)'); });
+
+    editBtn.append('text')
+        .text('⋮')
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central')
+        .attr('fill', '#64748b')
+        .attr('font-size', '18px')
+        .attr('font-weight', 'bold')
+        .attr('y', 0);
 }
 
 function loadTree(clickedPersonId) {
@@ -185,6 +235,9 @@ function loadTree(clickedPersonId) {
             const nodesArray = data.nodes || [];
             const connections = data.connections || [];
             
+            // Xotirada saqlaymiz (keyinchalik spouse'larni qidirish uchun)
+            currentTreeData = { nodes: nodesArray, connections: connections };
+
             // Map the nodes for easy lookup
             const nodesMap = new Map();
             nodesArray.forEach(n => nodesMap.set(n.id, n));
@@ -192,17 +245,8 @@ function loadTree(clickedPersonId) {
             drawLinks(connections, nodesMap);
             drawNodes(nodesArray);
             
-            // Layoutni o'rtaga keltirish
-            if (data.minX !== undefined && data.maxX !== undefined) {
-               const centerX = (data.minX + data.maxX) / 2;
-               const centerY = (data.minY + data.maxY) / 2;
-               svg.transition().duration(750).call(
-                   zoom.transform, 
-                   d3.zoomIdentity.translate(width / 2 - centerX, height / 2 - centerY).scale(1)
-               );
-            } else {
+            // Yuklangandan so'ng avtomatik tarzda "Markazga" tugmasi effektini beramiz
             centerRoot();
-            }
         })
         .catch(error => {
             console.error(error);
@@ -235,3 +279,268 @@ window.addEventListener('resize', () => {
     width = container.clientWidth;
     height = container.clientHeight;
 });
+
+// --- CONTEXT MENU VA API LOGIC ---
+let selectedNodeData = null;
+let currentTreeData = { nodes: [], connections: [] };
+
+function showContextMenu(event, d, type) {
+    selectedNodeData = d;
+    const menu = document.getElementById('context-menu');
+    
+    // Guruhlarni ko'rsatish/yashirish
+    const addGroup = menu.querySelector('.ctx-group-add');
+    const editGroup = menu.querySelector('.ctx-group-edit');
+    
+    if (type === 'add') {
+        addGroup.style.display = 'block';
+        editGroup.style.display = 'none';
+    } else {
+        addGroup.style.display = 'none';
+        editGroup.style.display = 'block';
+    }
+
+    menu.classList.add('show');
+    menu.style.left = event.pageX + 'px';
+    menu.style.top = event.pageY + 'px';
+}
+
+document.addEventListener('click', () => {
+    const menu = document.getElementById('context-menu');
+    if (menu) menu.classList.remove('show');
+});
+
+function handleAddAction(actionId) {
+    if (!selectedNodeData) return;
+    
+    if (actionId === 'child_male' || actionId === 'child_female') {
+        // Shu odamning turmush o'rtoqlarini izlaymiz
+        const spousesIds = [];
+        currentTreeData.connections.forEach(conn => {
+            if (conn.type === 'SPOUSE') {
+                if (conn.fromId === selectedNodeData.id) spousesIds.push(conn.toId);
+                else if (conn.toId === selectedNodeData.id) spousesIds.push(conn.fromId);
+            }
+        });
+        
+        const spouses = spousesIds.map(id => currentTreeData.nodes.find(n => n.id === id)).filter(Boolean);
+
+        if (spouses.length > 0) {
+            // Modalni chaqiramiz
+            promptSpouseSelection(spouses, (selectedSpouseId) => {
+                if (selectedSpouseId === undefined) return; // bekor qilindi
+                executeAddAction(actionId, selectedSpouseId);
+            });
+        } else {
+            // Jufti yo'q, shunchaki qo'shish
+            executeAddAction(actionId, null);
+        }
+    } else {
+        // parent va spouse uchun
+        executeAddAction(actionId, null);
+    }
+}
+
+function promptSpouseSelection(spouses, callback) {
+    // Kichik modal yaratish
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.width = '100vw';
+    overlay.style.height = '100vh';
+    overlay.style.background = 'rgba(0,0,0,0.6)';
+    overlay.style.zIndex = '9999';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+
+    const modal = document.createElement('div');
+    modal.style.background = '#1e293b';
+    modal.style.padding = '20px 24px';
+    modal.style.borderRadius = '12px';
+    modal.style.color = '#f8fafc';
+    modal.style.fontFamily = 'sans-serif';
+    modal.style.minWidth = '320px';
+    modal.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+
+    const title = document.createElement('h3');
+    title.innerText = "Kim bilan farzand ko'rgan?";
+    title.style.marginTop = '0';
+    modal.appendChild(title);
+
+    const optionsContainer = document.createElement('div');
+    optionsContainer.style.display = 'flex';
+    optionsContainer.style.flexDirection = 'column';
+    optionsContainer.style.gap = '10px';
+    optionsContainer.style.marginBottom = '20px';
+
+    const renderOption = (value, label) => {
+        const labelEl = document.createElement('label');
+        labelEl.style.display = 'flex';
+        labelEl.style.gap = '10px';
+        labelEl.style.cursor = 'pointer';
+        labelEl.style.alignItems = 'center';
+        
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'spouse_select';
+        radio.value = value;
+        if (value === "null") radio.checked = true;
+
+        labelEl.appendChild(radio);
+        labelEl.appendChild(document.createTextNode(label));
+        return labelEl;
+    };
+
+    optionsContainer.appendChild(renderOption("null", "Faqat o'zi (Juftni bog'lamaslik)"));
+    spouses.forEach(sp => {
+        optionsContainer.appendChild(renderOption(sp.id, sp.name || "Noma'lum"));
+    });
+
+    modal.appendChild(optionsContainer);
+
+    const btnContainer = document.createElement('div');
+    btnContainer.style.display = 'flex';
+    btnContainer.style.justifyContent = 'flex-end';
+    btnContainer.style.gap = '10px';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.innerText = "Bekor qilish";
+    cancelBtn.style.padding = '8px 16px';
+    cancelBtn.style.background = 'transparent';
+    cancelBtn.style.color = '#cbd5e1';
+    cancelBtn.style.border = '1px solid #475569';
+    cancelBtn.style.borderRadius = '6px';
+    cancelBtn.style.cursor = 'pointer';
+    cancelBtn.onclick = () => { 
+        document.body.removeChild(overlay); 
+        callback(undefined); 
+    };
+
+    const okBtn = document.createElement('button');
+    okBtn.innerText = "Davom etish";
+    okBtn.style.padding = '8px 16px';
+    okBtn.style.background = '#3b82f6';
+    okBtn.style.color = 'white';
+    okBtn.style.border = 'none';
+    okBtn.style.borderRadius = '6px';
+    okBtn.style.fontWeight = 'bold';
+    okBtn.style.cursor = 'pointer';
+    okBtn.onclick = () => {
+        const selectedRadio = optionsContainer.querySelector('input[name="spouse_select"]:checked');
+        const val = selectedRadio.value;
+        document.body.removeChild(overlay);
+        callback(val === "null" ? null : parseInt(val));
+    };
+
+    btnContainer.appendChild(cancelBtn);
+    btnContainer.appendChild(okBtn);
+    modal.appendChild(btnContainer);
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+}
+
+function executeAddAction(actionId, spouseId) {
+    // Token olib header tayyorlash
+    const tokenInput = document.getElementById('tokenInput');
+    const token = tokenInput ? tokenInput.value.trim() : "";
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    let url = "";
+    let bodyData = {};
+
+    if (actionId === 'parent') {
+        url = "/api/persons/add-parent";
+        bodyData = { id: selectedNodeData.id, treeId: selectedNodeData.treeId };
+    } else if (actionId === 'spouse') {
+        url = "/api/persons/add-spouse";
+        bodyData = { id: selectedNodeData.id, treeId: selectedNodeData.treeId };
+    } else if (actionId === 'child_male' || actionId === 'child_female') {
+        url = "/api/persons/add-child";
+        bodyData = { 
+            id: selectedNodeData.id, 
+            treeId: selectedNodeData.treeId,
+            childGender: actionId === 'child_male' ? 'MALE' : 'FEMALE'
+        };
+        // Agar yordamchi ota/ona tanlangan bo'lsa
+        if (spouseId) {
+            bodyData.spouseId = spouseId;
+        }
+    }
+
+    fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(bodyData)
+    })
+    .then(async res => {
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(errText || "Xatolik ro'y berdi");
+        }
+        return res.json();
+    })
+    .then(data => {
+        // D3 grafikni yangilash
+        loadTree(null); 
+    })
+    .catch(err => {
+        alert("Amalni bajarib bo'lmadi!\n" + err.message);
+    });
+}
+
+function handleEditAction(action) {
+    if (!selectedNodeData) return;
+    
+    const tokenInput = document.getElementById('tokenInput');
+    const token = tokenInput ? tokenInput.value.trim() : "";
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    if (action === 'delete') {
+        if (!confirm(`Haqiqatan ham "${selectedNodeData.name}" ni tizimdan o'chirmoqchimisiz?`)) return;
+
+        fetch(`/api/persons/${selectedNodeData.id}`, {
+            method: 'DELETE',
+            headers: headers
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("O'chirishda xatolik");
+            alert("Muvaffaqiyatli o'chirildi!");
+            loadTree(null);
+        })
+        .catch(err => alert(err.message));
+
+    } else if (action === 'update') {
+        const newName = prompt("Yangi ismni kiriting:", selectedNodeData.name || "");
+        if (newName === null) return;
+
+        const body = {
+            name: newName,
+            gender: selectedNodeData.gender,
+            birthDate: selectedNodeData.birthDate,
+            phone: selectedNodeData.phone,
+            profession: selectedNodeData.role
+        };
+
+        fetch(`/api/persons/${selectedNodeData.id}`, {
+            method: 'PUT',
+            headers: headers,
+            body: JSON.stringify(body)
+        })
+        .then(async res => {
+            if (!res.ok) {
+                const txt = await res.text();
+                throw new Error(txt || "Yangilashda xatolik");
+            }
+            return res.json();
+        })
+        .then(() => {
+            loadTree(null);
+        })
+        .catch(err => alert(err.message));
+    }
+}

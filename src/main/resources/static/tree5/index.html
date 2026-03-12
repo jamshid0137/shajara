@@ -5,6 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shajara - Oflayn D3.js</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* CONTEXT MENU */
+        #context-menu {
+            position: fixed;
+            z-index: 1000;
+            display: none;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 8px 0;
+            min-width: 180px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            font-family: sans-serif;
+            color: #f8fafc;
+            font-size: 14px;
+        }
+        #context-menu.show {
+            display: block;
+        }
+        .ctx-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: background 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ctx-item:hover {
+            background: rgba(59, 130, 246, 0.2);
+        }
+        .ctx-divider {
+            height: 1px;
+            background: #334155;
+            margin: 4px 0;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -24,6 +61,24 @@
         <div id="tree-container"></div>
     </div>
     
+    <!-- CONTEXT MENU HTML -->
+    <div id="context-menu">
+        <!-- Add Actions -->
+        <div class="ctx-group-add">
+            <div class="ctx-item" onclick="handleAddAction('parent')">➕ Ota-ona qo'shish</div>
+            <div class="ctx-item" onclick="handleAddAction('spouse')">💑 Juft qo'shish</div>
+            <div class="ctx-item" onclick="handleAddAction('child_male')">👦 O'g'il qo'shish</div>
+            <div class="ctx-item" onclick="handleAddAction('child_female')">👧 Qiz qo'shish</div>
+        </div>
+        
+        <!-- Edit Actions -->
+        <div class="ctx-group-edit" style="display: none;">
+            <div class="ctx-item" onclick="handleEditAction('update')">✏️ Tahrirlash</div>
+            <div class="ctx-divider"></div>
+            <div class="ctx-item" style="color: #f87171;" onclick="handleEditAction('delete')">❌ O'chirish</div>
+        </div>
+    </div>
+
     <!-- Oflayn d3 kutubxonasi kafolatlangan ishlaydi -->
     <script src="d3.v7.min.js"></script>
     <script src="main.js"></script>

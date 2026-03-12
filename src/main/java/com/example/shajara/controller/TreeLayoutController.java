@@ -27,17 +27,16 @@ public class TreeLayoutController {
 
         // lastPersonId ni yangilaymiz — keyingi safar sahifa ochilganda shu shaxs
         // markaz bo'ladi
-        familyTreeRepository.findAll().stream()
-                .filter(t -> t.getLastPersonId() != null || true)
-                .filter(t -> {
-                    // O'sha personId shu treega tegishli ekanligini tekshiramiz
-                    return layout.getNodes().stream()
-                            .anyMatch(n -> n.getId().equals(personId));
-                })
+        layout.getNodes().stream()
+                .filter(n -> n.getId().equals(personId))
                 .findFirst()
-                .ifPresent(tree -> {
-                    tree.setLastPersonId(personId);
-                    familyTreeRepository.save(tree);
+                .ifPresent(centerNode -> {
+                    if (centerNode.getTreeId() != null) {
+                        familyTreeRepository.findById(centerNode.getTreeId()).ifPresent(tree -> {
+                            tree.setLastPersonId(personId);
+                            familyTreeRepository.save(tree);
+                        });
+                    }
                 });
 
         return ResponseEntity.ok(layout);

@@ -36,7 +36,6 @@ public class TreeLayoutService {
     private static final double NODE_W = 200.0;
     private static final double NODE_H = 80.0;
     private static final double H_GAP = 40.0;
-    private static final double PARTNER_V_GAP = 20.0;
     private static final double V_SPACE = 260.0;
     private static final double CHILD_GAP = 30.0;
 
@@ -224,55 +223,26 @@ public class TreeLayoutService {
             int childCount = 0;
             for (Person spChild : spouseChildren) {
                 if (!visited.contains(spChild.getId())) {
-                    double spChildX = x + (childCount * (NODE_W + CHILD_GAP)) - ((spouseChildren.size() * NODE_W) / 2.0);
-                    addNode(nodeMap, visited, spChild, spChildX, y + V_SPACE, "CHILD");
+                    // Spousening tagiga ustma-ust (vertikal) joylash
+                    double spChildX = x; 
+                    double spChildY = y + V_SPACE + (childCount * (NODE_H + CHILD_GAP));
+                    
+                    addNode(nodeMap, visited, spChild, spChildX, spChildY, "CHILD");
                     connections.add(conn(spouse.getId(), spChild.getId(), "PARENT_CHILD"));
                     childCount++;
 
                     if (spChild.getFatherId() != null && !spChild.getFatherId().equals(spouse.getId())) {
                         Long otherId = spChild.getFatherId();
+                        // Faqat already visited bo'lsa connection qo'shamiz
                         if (visited.contains(otherId)) {
                             connections.add(conn(otherId, spChild.getId(), "PARENT_CHILD"));
-                        } else {
-                            personRepository.findById(otherId).ifPresent(otherParent -> {
-                                addNode(nodeMap, visited, otherParent, spChildX + NODE_W + H_GAP, y, "SPOUSE");
-                                connections.add(conn(spouse.getId(), otherParent.getId(), "SPOUSE"));
-                                connections.add(conn(otherParent.getId(), spChild.getId(), "PARENT_CHILD"));
-                            });
                         }
                     }
                     if (spChild.getMotherId() != null && !spChild.getMotherId().equals(spouse.getId())) {
                         Long otherId = spChild.getMotherId();
+                        // Faqat already visited bo'lsa connection qo'shamiz
                         if (visited.contains(otherId)) {
                             connections.add(conn(otherId, spChild.getId(), "PARENT_CHILD"));
-                        } else {
-                            personRepository.findById(otherId).ifPresent(otherParent -> {
-                                addNode(nodeMap, visited, otherParent, spChildX - NODE_W - H_GAP, y, "SPOUSE");
-                                connections.add(conn(spouse.getId(), otherParent.getId(), "SPOUSE"));
-                                connections.add(conn(otherParent.getId(), spChild.getId(), "PARENT_CHILD"));
-                            });
-                        }
-                    }
-                }
-            }
-
-            // ===== SPOUSE NING BOSHQA SPOUSELARI =====
-            List<Person> otherSpouses = relationRepository.findAllSpousesNative(spouse.getId());
-            int otherSpouseCount = 0;
-            for (Person other : otherSpouses) {
-                if (!visited.contains(other.getId()) && !other.getId().equals(center.getId())) {
-                    double otherX = x + NODE_W + H_GAP + (otherSpouseCount * (NODE_W + H_GAP));
-                    addNode(nodeMap, visited, other, otherX, y, "SPOUSE");
-                    connections.add(conn(spouse.getId(), other.getId(), "SPOUSE"));
-                    otherSpouseCount++;
-                    rightIdx++;
-
-                    for (Person spChild : spouseChildren) {
-                        if (spChild.getFatherId() != null && spChild.getFatherId().equals(other.getId()) && visited.contains(spChild.getId())) {
-                            connections.add(conn(other.getId(), spChild.getId(), "PARENT_CHILD"));
-                        }
-                        if (spChild.getMotherId() != null && spChild.getMotherId().equals(other.getId()) && visited.contains(spChild.getId())) {
-                            connections.add(conn(other.getId(), spChild.getId(), "PARENT_CHILD"));
                         }
                     }
                 }
@@ -382,18 +352,20 @@ public class TreeLayoutService {
         if (children == null || children.isEmpty())
             return;
 
-        int n = children.size();
-        double totalW = n * NODE_W + (n - 1) * CHILD_GAP;
-        double startX = -totalW / 2.0;
+        TreeNodeDto parentNode = nodeMap.get(parent.getId());
+        double parentX = parentNode != null ? parentNode.getX() : 0.0;
 
-        for (int i = 0; i < n; i++) {
+        int childCount = 0;
+        for (int i = 0; i < children.size(); i++) {
             Person child = children.get(i);
             if (visited.contains(child.getId()))
                 continue;
 
-            double cx = startX + i * (NODE_W + CHILD_GAP);
-            double cy = baseY + depth * V_SPACE; // FamilyTree.js buni ignore qiladi
+            // O'zi bilan ustma-ust tushishi uchun X o'zgarmas qoladi, Y esa ortadi
+            double cx = parentX;
+            double cy = baseY + childCount * (NODE_H + CHILD_GAP);
             addNode(nodeMap, visited, child, cx, cy, "CHILD");
+            childCount++;
 
             // Ota/ona → farzand connection
             connections.add(conn(parent.getId(), child.getId(), "PARENT_CHILD"));
@@ -417,13 +389,10 @@ public class TreeLayoutService {
                     connections.add(conn(child.getId(), csp.getId(), "SPOUSE"));
                     continue;
                 }
-                // Juft yoniga joylaymiz (FamilyTree.js o'zi tartibga soladi)
+                // Juft yoniga joylaymiz
                 double cspX = cx + (j % 2 == 0 ? NODE_W + H_GAP : -(NODE_W + H_GAP));
                 addNode(nodeMap, visited, csp, cspX, cy, "SPOUSE");
                 connections.add(conn(child.getId(), csp.getId(), "SPOUSE"));
-
-                // Juftning ikkinchi ota-onasi yoki farzandlari bor bo'lsa ham qo'shamiz
-                // lekin ularni rekursiv o'tkazmaymiz (faqat bitta child liniyasi)
             }
 
             // ── Rekursiv: farzandning avlodlari ──
