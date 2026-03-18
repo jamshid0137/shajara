@@ -223,6 +223,21 @@ public class TreeLayoutService {
             int childCount = 0;
             for (Person spChild : spouseChildren) {
                 if (!visited.contains(spChild.getId())) {
+                    
+                    // Bolaning 2-ota-onasini aniqlaymiz
+                    Long otherParentId = null;
+                    if (spChild.getFatherId() != null && !spChild.getFatherId().equals(spouse.getId())) {
+                        otherParentId = spChild.getFatherId();
+                    } else if (spChild.getMotherId() != null && !spChild.getMotherId().equals(spouse.getId())) {
+                        otherParentId = spChild.getMotherId();
+                    }
+
+                    // Agar bola boshqa spouse bilan bo'lsa (ya'ni 2-ota-onasi markaziy Person bo'lmasa),
+                    // bu bolani shu markaziy kishi ko'rinishida yashiramiz (continue).
+                    if (otherParentId != null && !otherParentId.equals(center.getId())) {
+                        continue;
+                    }
+
                     // Spousening tagiga ustma-ust (vertikal) joylash
                     double spChildX = x; 
                     double spChildY = y + V_SPACE + (childCount * (NODE_H + CHILD_GAP));
@@ -296,13 +311,42 @@ public class TreeLayoutService {
 
             // AKA-UKANING NEVARALARI (Children of sibling)
             List<Person> siblingChildren = personRepository.findAllByFatherIdOrMotherId(s.getId(), s.getId());
-            int scCount = 0;
-            double childStartX = sibXBase - ((siblingChildren.size() * NODE_W) / 2.0);
+            Map<Long, Integer> childCountsByParent = new HashMap<>();
+
             for (Person sc : siblingChildren) {
                 if (!visited.contains(sc.getId())) {
-                    addNode(nodeMap, visited, sc, childStartX + (scCount * (NODE_W + CHILD_GAP)), V_SPACE, "CHILD");
+                    Long otherParentId = null;
+                    if (sc.getFatherId() != null && !sc.getFatherId().equals(s.getId())) {
+                        otherParentId = sc.getFatherId();
+                    } else if (sc.getMotherId() != null && !sc.getMotherId().equals(s.getId())) {
+                        otherParentId = sc.getMotherId();
+                    }
+
+                    Long placementTargetId = s.getId();
+
+                    if (otherParentId != null) {
+                        boolean isSpouse = false;
+                        for (Person sbSp : siblingSpouses) {
+                            if (sbSp.getId().equals(otherParentId)) {
+                                isSpouse = true;
+                                break;
+                            }
+                        }
+                        if (isSpouse) {
+                            placementTargetId = otherParentId;
+                        } else {
+                            continue; // Boshqa noma'lum spouse bo'lsa, yashiramiz
+                        }
+                    }
+
+                    int currentCount = childCountsByParent.getOrDefault(placementTargetId, 0);
+                    TreeNodeDto targetNode = nodeMap.get(placementTargetId);
+                    double cx = targetNode != null ? targetNode.getX() : sibXBase;
+                    double cy = V_SPACE + (currentCount * (NODE_H + CHILD_GAP));
+
+                    addNode(nodeMap, visited, sc, cx, cy, "CHILD");
                     connections.add(conn(s.getId(), sc.getId(), "PARENT_CHILD"));
-                    scCount++;
+                    childCountsByParent.put(placementTargetId, currentCount + 1);
 
                     if (sc.getFatherId() != null && !sc.getFatherId().equals(s.getId()) && visited.contains(sc.getFatherId())) {
                         connections.add(conn(sc.getFatherId(), sc.getId(), "PARENT_CHILD"));

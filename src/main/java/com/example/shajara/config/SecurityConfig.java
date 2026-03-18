@@ -48,7 +48,10 @@ public class SecurityConfig {
             // v4 — o'z SVG rendereri, FamilyTree.js siz
             "/v4/**",
             "/tree5/**",
-            "/api/layout/**"
+            "/api/layout/**",
+            // v6 — OrgChart.js asosidagi tree6.html
+            "/v6/**",
+            "/api/layout1/**"
     };
 
     @Bean
