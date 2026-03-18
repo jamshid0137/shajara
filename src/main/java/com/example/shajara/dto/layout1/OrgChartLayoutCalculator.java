@@ -3,642 +3,616 @@ package com.example.shajara.dto.layout1;
 import org.springframework.stereotype.Component;
 import java.util.*;
 
+/**
+ * Buchheim (improved Walker) algorithm — O(n) tree layout
+ *
+ * Qoidalar:
+ *  - Parent har doim farzanddan YUQORIDA  (Y = level * levelHeight)
+ *  - Sibling va spouselar EKV QATORDA     (same level)
+ *  - apportion() metodi bilan USTMA-UST tushish oldini olinadi
+ */
 @Component
 public class OrgChartLayoutCalculator {
 
-    // ==================== CONSTANTS ====================
-    public static final int ORIENTATION_TOP = 0;
+    // ── Constants ──────────────────────────────────────────────────────────────
+    public static final int ORIENTATION_TOP    = 0;
     public static final int ORIENTATION_BOTTOM = 1;
-    public static final int ORIENTATION_RIGHT = 2;
-    public static final int ORIENTATION_LEFT = 3;
+    public static final int ORIENTATION_RIGHT  = 2;
+    public static final int ORIENTATION_LEFT   = 3;
 
-    public static final int LAYOUT_NORMAL = 0;
-    public static final int LAYOUT_MIXED = 1;
-    public static final int LAYOUT_TREE = 2;
-    public static final int LAYOUT_TREE_LEFT_OFFSET = 3;
+    public static final int LAYOUT_NORMAL            = 0;
+    public static final int LAYOUT_MIXED             = 1;
+    public static final int LAYOUT_TREE              = 2;
+    public static final int LAYOUT_TREE_LEFT_OFFSET  = 3;
     public static final int LAYOUT_TREE_RIGHT_OFFSET = 4;
-    public static final int LAYOUT_TREE_LEFT = 5;
-    public static final int LAYOUT_TREE_RIGHT = 6;
-    public static final int LAYOUT_GRID = -1;
+    public static final int LAYOUT_TREE_LEFT         = 5;
+    public static final int LAYOUT_TREE_RIGHT        = 6;
+    public static final int LAYOUT_GRID              = -1;
 
-    // ==================== DATA CLASSES ====================
+    // ── Public DTOs ────────────────────────────────────────────────────────────
 
     public static class LayoutConfig {
-        public int orientation = ORIENTATION_TOP;
-        public double levelSeparation = 60;
+        public int    orientation                   = ORIENTATION_TOP;
+        public double levelSeparation               = 60;
         public double mixedHierarchyNodesSeparation = 15;
-        public double assistantSeparation = 100;
-        public double subtreeSeparation = 40;
-        public double siblingSeparation = 20;
-        public int layout = LAYOUT_NORMAL;
-        public int columns = 10;
-        public double partnerNodeSeparation = 15;
+        public double assistantSeparation           = 100;
+        public double subtreeSeparation             = 40;
+        public double siblingSeparation             = 20;
+        public int    layout                        = LAYOUT_NORMAL;
+        public int    columns                       = 10;
+        public double partnerNodeSeparation         = 15;
     }
 
     public static class NodeInput {
         public String id;
         public String parentId;
         public String stParentId;
-        public double width;
-        public double height;
-        public List<String> childrenIds = new ArrayList<>();
-        public List<String> stChildrenIds = new ArrayList<>();
-        public int layout = 0;
-        public boolean isAssistant = false;
-        public boolean isSplit = false;
-        public boolean isMirror = false;
-        public boolean isPartner = false;
-        public int partnerType = 0; // 1=right, 2=left
-        public boolean hasPartners = false;
-        public double partnerSeparation = 65;
-        public double[] padding = {0, 0, 0, 0};
-        public String lcn = "";
+        public double width              = 250;
+        public double height             = 120;
+        public List<String> childrenIds  = new ArrayList<>();
+        public List<String> stChildrenIds= new ArrayList<>();
+        public int    layout             = 0;
+        public boolean isAssistant       = false;
+        public boolean isSplit           = false;
+        public boolean isMirror          = false;
+        public boolean isPartner         = false;
+        public int    partnerType        = 0;
+        public boolean hasPartners       = false;
+        public double partnerSeparation  = 65;
+        public double[] padding          = {0,0,0,0};
+        public String lcn                = "";
     }
 
     public static class NodePosition {
         public String id;
-        public double x;
-        public double y;
-        public double width;
-        public double height;
+        public double x, y, width, height;
         public String leftNeighborId;
         public String rightNeighborId;
 
-        public NodePosition(String id, double x, double y,
-                           double w, double h) {
-            this.id = id;
-            this.x = x;
-            this.y = y;
-            this.width = w;
-            this.height = h;
+        public NodePosition(String id, double x, double y, double w, double h){
+            this.id=id; this.x=x; this.y=y; this.width=w; this.height=h;
         }
     }
 
-    // Internal node used during calculation
+    // ── Internal node (Buchheim fields) ────────────────────────────────────────
+
     private static class Node {
+        // identity
         String id;
-        double x = 0, y = 0;
+        int    level = 0;
         double width, height;
-        double mod = 0;          // modifier for Reingold-Tilford
-        double prelim = 0;       // preliminary x position
-        Node parent;
-        Node leftNeighbor;
-        Node rightNeighbor;
-        List<Node> children = new ArrayList<>();
-        List<Node> stChildren = new ArrayList<>();
+
+        // final position
+        double x = 0, y = 0;
+
+        // Buchheim algorithm fields
+        double prelim   = 0;  // preliminary x
+        double mod      = 0;  // modifier (shift descendants)
+        double change   = 0;  // shift change (for executeShifts)
+        double shift    = 0;  // accumulated shift
+        int    number   = 1;  // 1-based index among this node's siblings
+        Node   thread   = null;
+        Node   ancestor = null; // initialized to self
+
+        // links
+        Node       parent = null;
+        Node       leftNeighbor  = null; // same level, left
+        Node       rightNeighbor = null; // same level, right
+        List<Node> children   = new ArrayList<>();
+        List<Node> stChildren = new ArrayList<>(); // subtree / partner
+
+        // metadata
+        boolean isPartner   = false;
+        boolean isSplit     = false;
         boolean isAssistant = false;
-        boolean isSplit = false;
-        boolean isMirror = false;
-        int partnerType = 0;
-        boolean hasPartners = false;
-        double partnerSeparation = 65;
-        int layout = 0;
-        String lcn = "";
-        double[] padding = {0, 0, 0, 0};
-        int level = 0;
+        int     partnerType = 0;   // 1=right, 2=left
+        int     layout      = 0;
+        String  lcn         = "";
 
-        Node(String id, double width, double height) {
-            this.id = id;
-            this.width = width;
-            this.height = height;
-        }
-
-        double getSize(int orientation) {
-            if (orientation == ORIENTATION_TOP ||
-                orientation == ORIENTATION_BOTTOM) {
-                return width;
-            }
-            return height;
-        }
-
-        double getMidpoint(int orientation) {
-            return getSize(orientation) / 2.0;
+        Node(String id, double w, double h){
+            this.id=id; this.width=w; this.height=h;
+            this.ancestor = this; // default: self
         }
     }
 
-    // ==================== MAIN CALCULATE METHOD ====================
+    // ==================== PUBLIC ENTRY POINT ====================
 
-    /**
-     * Asosiy hisoblash metodi
-     * @param nodeInputs - barcha nodelar
-     * @param rootIds - root node idlari
-     * @param layoutConfigs - layout konfiguratsiyasi
-     * @return - har bir node uchun pozitsiya
-     */
     public Map<String, NodePosition> calculate(
-            List<NodeInput> nodeInputs,
-            List<String> rootIds,
+            List<NodeInput>           nodeInputs,
+            List<String>              rootIds,
             Map<String, LayoutConfig> layoutConfigs) {
 
-        // 1. Node map tuzish
-        Map<String, Node> nodeMap = new HashMap<>();
-        for (NodeInput input : nodeInputs) {
-            Node node = new Node(input.id, input.width, input.height);
-            node.isAssistant = input.isAssistant;
-            node.isSplit = input.isSplit;
-            node.isMirror = input.isMirror;
-            node.partnerType = input.partnerType;
-            node.hasPartners = input.hasPartners;
-            node.partnerSeparation = input.partnerSeparation;
-            node.layout = input.layout;
-            node.lcn = input.lcn != null ? input.lcn : "";
-            node.padding = input.padding;
-            nodeMap.put(input.id, node);
+        if (nodeInputs == null || nodeInputs.isEmpty())
+            return Collections.emptyMap();
+
+        // 1. Build nodeMap
+        Map<String, Node> nodeMap = new LinkedHashMap<>();
+        for (NodeInput inp : nodeInputs) {
+            Node n = new Node(inp.id,
+                    inp.width  > 0 ? inp.width  : 250,
+                    inp.height > 0 ? inp.height : 120);
+            n.isPartner   = inp.isPartner;
+            n.isSplit     = inp.isSplit;
+            n.isAssistant = inp.isAssistant;
+            n.partnerType = inp.partnerType;
+            n.layout      = inp.layout;
+            n.lcn         = inp.lcn != null ? inp.lcn : "";
+            nodeMap.put(inp.id, n);
         }
 
-        // 2. Parent-child bog'liqliklarini o'rnatish
-        for (NodeInput input : nodeInputs) {
-            Node node = nodeMap.get(input.id);
+        // 2. Wire parent → children / stChildren
+        for (NodeInput inp : nodeInputs) {
+            Node node = nodeMap.get(inp.id);
             if (node == null) continue;
 
-            if (input.parentId != null) {
-                Node parent = nodeMap.get(input.parentId);
-                if (parent != null) {
-                    node.parent = parent;
-                    parent.children.add(node);
-                }
+            if (inp.parentId != null) {
+                Node p = nodeMap.get(inp.parentId);
+                if (p != null) { node.parent = p; p.children.add(node); }
             }
-
-            if (input.stParentId != null) {
-                Node stParent = nodeMap.get(input.stParentId);
-                if (stParent != null) {
-                    stParent.stChildren.add(node);
-                }
+            if (inp.stParentId != null) {
+                Node sp = nodeMap.get(inp.stParentId);
+                if (sp != null) sp.stChildren.add(node);
             }
         }
 
-        // 3. Root nodelarni topish
+        // 3. Collect roots
         List<Node> roots = new ArrayList<>();
         if (rootIds != null && !rootIds.isEmpty()) {
-            for (String rootId : rootIds) {
-                Node root = nodeMap.get(rootId);
-                if (root != null) roots.add(root);
+            for (String rid : rootIds) {
+                Node r = nodeMap.get(rid);
+                if (r != null) roots.add(r);
             }
         } else {
-            for (Node node : nodeMap.values()) {
-                if (node.parent == null) roots.add(node);
-            }
+            for (Node n : nodeMap.values())
+                if (n.parent == null) roots.add(n);
         }
+        if (roots.isEmpty()) return Collections.emptyMap();
 
-        // 4. Default layout config
-        LayoutConfig baseConfig = layoutConfigs != null
+        // 4. Config
+        LayoutConfig cfg = (layoutConfigs != null)
                 ? layoutConfigs.getOrDefault("base", new LayoutConfig())
                 : new LayoutConfig();
 
-        // 5. Har bir root uchun layout hisoblash
-        double offsetX = 0;
-        Map<String, NodePosition> result = new HashMap<>();
-
-        for (Node root : roots) {
-            setLevels(root, 0);
-            calculateLayout(root, baseConfig, layoutConfigs);
-
-            // Har bir root uchun offset
-            if (baseConfig.orientation == ORIENTATION_TOP ||
-                baseConfig.orientation == ORIENTATION_BOTTOM) {
-
-                double minX = getMinX(root);
-                shiftTree(root, -minX + offsetX);
-                double maxX = getMaxX(root);
-                offsetX = maxX + baseConfig.subtreeSeparation;
-            } else {
-                double minY = getMinY(root);
-                shiftTreeY(root, -minY + offsetX);
-                double maxY = getMaxY(root);
-                offsetX = maxY + baseConfig.subtreeSeparation;
+        // 5. PARTNER NODES: vaqtinchalik children listidan ajrat
+        //    (isPartner=true bo'lgan nodelar parent bilan bir xil qatorda bo'lishi kerak)
+        Map<String, List<Node>> partnersByParent = new LinkedHashMap<>();
+        for (Node n : nodeMap.values()) {
+            if (n.isPartner && n.parent != null) {
+                partnersByParent
+                    .computeIfAbsent(n.parent.id, k -> new ArrayList<>())
+                    .add(n);
+                n.parent.children.remove(n); // Buchheim uchun vaqtinchalik olib chiqamiz
             }
-
-            collectPositions(root, result, baseConfig.orientation);
         }
 
-        // 6. Neighbor o'rnatish
-        setNeighbors(roots, baseConfig.orientation);
+        // 6. Build level-maxHeight map (for correct Y per-level)
+        Map<Integer, Double> levelMaxH = new LinkedHashMap<>();
+        Set<String> seen = new HashSet<>();
+        for (Node root : roots) collectLevelHeights(root, levelMaxH, seen);
+
+        // 7. Layout each root subtree (partners temporarily excluded)
+        boolean horiz = (cfg.orientation == ORIENTATION_TOP
+                      || cfg.orientation == ORIENTATION_BOTTOM);
+        double offset = 0;
+
+        for (Node root : roots) {
+            // a) assign levels
+            assignLevels(root, 0, new HashSet<>());
+
+            // b) Buchheim init + firstWalk (partners excluded)
+            initBuchheim(root);
+            firstWalk(root, cfg);
+
+            // c) secondWalk — sets final x/y relative to origin
+            secondWalk(root, -root.prelim, 0, cfg, levelMaxH);
+
+            // d) apply orientation transforms
+            applyOrientation(root, cfg.orientation);
+
+            // e) shift to offsetX so trees don't overlap
+            if (horiz) {
+                double minX = subtreeMinX(root);
+                shiftSubtreeX(root, -minX + offset);
+                offset = subtreeMaxX(root) + cfg.subtreeSeparation;
+            } else {
+                double minY = subtreeMinY(root);
+                shiftSubtreeY(root, -minY + offset);
+                offset = subtreeMaxY(root) + cfg.subtreeSeparation;
+            }
+        }
+
+        // 8. PARTNER NODES reposition: parent bilan bir xil Y, yoniga X
+        for (Map.Entry<String, List<Node>> e : partnersByParent.entrySet()) {
+            Node parentNode = nodeMap.get(e.getKey());
+            if (parentNode == null) continue;
+
+            double xRight = parentNode.x + parentNode.width + cfg.partnerNodeSeparation;
+            double xLeft  = parentNode.x - cfg.partnerNodeSeparation;
+
+            for (Node partner : e.getValue()) {
+                // partnerType: 1 = right, 2 = left, 0/default = right
+                if (partner.partnerType == 2) {
+                    xLeft -= partner.width;
+                    partner.x = xLeft;
+                    xLeft -= cfg.partnerNodeSeparation;
+                } else {
+                    partner.x = xRight;
+                    xRight += partner.width + cfg.partnerNodeSeparation;
+                }
+                partner.y = parentNode.y; // SAME ROW!
+                partner.level = parentNode.level; // same level
+
+                // Re-add to parent.children for collectPositions
+                parentNode.children.add(partner);
+
+                // Also position partner's own children (if any) below partner
+                for (Node pc : partner.children) {
+                    shiftSubtreeX(pc, partner.x - parentNode.x);
+                }
+            }
+        }
+
+        // 9. setNeighbors → THEN collectPositions
+        setNeighbors(new ArrayList<>(roots), cfg.orientation);
+
+        Map<String, NodePosition> result = new LinkedHashMap<>();
+        Set<String> visited = new HashSet<>();
+        for (Node root : roots)
+            collectPositions(root, result, visited);
 
         return result;
     }
 
-    // ==================== LEVEL SETTING ====================
+    // ==================== LEVEL HELPER ====================
 
-    private void setLevels(Node node, int level) {
-        node.level = level;
-        for (Node child : node.children) {
-            setLevels(child, level + 1);
+    private void assignLevels(Node v, int level, Set<String> seen) {
+        if (seen.contains(v.id)) return;
+        seen.add(v.id);
+        v.level = level;
+        for (Node c : v.children) {
+            // Partner nodelar parent bilan BIR XIL LEVEL (pastga emas, yoniga)
+            int childLevel = c.isPartner ? level : level + 1;
+            assignLevels(c, childLevel, seen);
         }
-        for (Node stChild : node.stChildren) {
-            setLevels(stChild, level + 1);
-        }
+        for (Node c : v.stChildren)
+            if (c.parent == null) assignLevels(c, level + 1, seen);
     }
 
-    // ==================== MAIN LAYOUT ALGORITHM ====================
-
-    private void calculateLayout(Node root,
-                                  LayoutConfig baseConfig,
-                                  Map<String, LayoutConfig> layoutConfigs) {
-        // Reingold-Tilford algoritmi asosida
-        firstWalk(root, baseConfig, layoutConfigs);
-        secondWalk(root, 0, baseConfig);
-
-        // Orientation ga qarab Y ni o'zgartirish
-        if (baseConfig.orientation == ORIENTATION_BOTTOM) {
-            mirrorY(root);
-        } else if (baseConfig.orientation == ORIENTATION_RIGHT) {
-            swapXY(root);
-        } else if (baseConfig.orientation == ORIENTATION_LEFT) {
-            swapXY(root);
-            mirrorX(root);
-        }
+    private void collectLevelHeights(Node v, Map<Integer, Double> map, Set<String> seen) {
+        if (seen.contains(v.id)) return;
+        seen.add(v.id);
+        map.merge(v.level, v.height, Math::max);
+        for (Node c : v.children)   collectLevelHeights(c, map, seen);
+        for (Node c : v.stChildren)
+            if (c.parent == null) collectLevelHeights(c, map, seen);
     }
 
-    // ==================== FIRST WALK (bottom-up) ====================
+    /** Cumulative Y for given level using per-level max heights */
+    private double yForLevel(int level, LayoutConfig cfg,
+                              Map<Integer, Double> levelMaxH) {
+        double y = 0;
+        for (int i = 0; i < level; i++)
+            y += levelMaxH.getOrDefault(i, 120.0) + cfg.levelSeparation;
+        return y;
+    }
 
-    private void firstWalk(Node node,
-                           LayoutConfig config,
-                           Map<String, LayoutConfig> layoutConfigs) {
+    // ==================== BUCHHEIM INIT ====================
 
-        LayoutConfig effectiveConfig = getEffectiveConfig(
-                node, config, layoutConfigs);
+    private void initBuchheim(Node v) {
+        v.ancestor = v;
+        v.thread   = null;
+        v.change   = 0;
+        v.shift    = 0;
+        v.mod      = 0;
+        v.prelim   = 0;
+        for (int i = 0; i < v.children.size(); i++) {
+            Node c = v.children.get(i);
+            c.number = i + 1;
+            initBuchheim(c);
+        }
+        // stChildren without primary parent
+        for (Node c : v.stChildren)
+            if (c.parent == null) { c.number = 1; initBuchheim(c); }
+    }
 
-        if (node.children.isEmpty()) {
+    // ==================== FIRST WALK ====================
+
+    private void firstWalk(Node v, LayoutConfig cfg) {
+        if (v.children.isEmpty()) {
             // Leaf node
-            node.prelim = 0;
-            if (node.leftNeighbor != null) {
-                node.prelim = node.leftNeighbor.prelim
-                        + nodeSize(node.leftNeighbor, effectiveConfig)
-                        + effectiveConfig.siblingSeparation;
-            }
+            Node w = leftSibling(v);
+            if (w != null)
+                v.prelim = w.prelim + nodeWidth(w) + cfg.siblingSeparation;
+            else
+                v.prelim = 0;
         } else {
-            // Internal node
-            Node leftmost = null;
-            double step = getLayoutStep(node, effectiveConfig);
-
-            for (int i = 0; i < node.children.size(); i++) {
-                Node child = node.children.get(i);
-
-                // Left neighbor o'rnatish
-                if (i > 0) {
-                    child.leftNeighbor = node.children.get(i - 1);
-                    node.children.get(i - 1).rightNeighbor = child;
-                }
-
-                firstWalk(child, effectiveConfig, layoutConfigs);
-
-                if (leftmost == null) leftmost = child;
+            Node defaultAncestor = v.children.get(0);
+            for (Node w : v.children) {
+                firstWalk(w, cfg);
+                defaultAncestor = apportion(w, defaultAncestor, cfg);
             }
+            executeShifts(v);
 
-            // Partner va assistant handling
-            handlePartnersAndAssistants(node, effectiveConfig);
+            double firstPrelim = v.children.get(0).prelim;
+            double lastPrelim  = v.children.get(v.children.size()-1).prelim
+                               + nodeWidth(v.children.get(v.children.size()-1));
+            double midpoint    = (firstPrelim + lastPrelim) / 2.0;
 
-            // Node markazini hisoblash
-            double midpoint = getMidpointOfChildren(
-                    node, effectiveConfig);
-
-            if (node.leftNeighbor != null) {
-                node.prelim = node.leftNeighbor.prelim
-                        + nodeSize(node.leftNeighbor, effectiveConfig)
-                        + effectiveConfig.siblingSeparation;
-                node.mod = node.prelim - midpoint;
+            Node w = leftSibling(v);
+            if (w != null) {
+                v.prelim = w.prelim + nodeWidth(w) + cfg.siblingSeparation;
+                v.mod     = v.prelim - midpoint;
             } else {
-                node.prelim = midpoint;
+                v.prelim = midpoint;
             }
         }
     }
 
-    // ==================== SECOND WALK (top-down) ====================
-
-    private void secondWalk(Node node, double modSum,
-                            LayoutConfig config) {
-        node.x = node.prelim + modSum;
-        node.y = node.level * (getMaxNodeHeight(node)
-                + config.levelSeparation);
-
-        double newModSum = modSum + node.mod;
-        for (Node child : node.children) {
-            secondWalk(child, newModSum, config);
-        }
-
-        // stChildren uchun
-        for (Node stChild : node.stChildren) {
-            secondWalk(stChild, newModSum, config);
-        }
-    }
-
-    // ==================== HELPER METHODS ====================
-
-    private LayoutConfig getEffectiveConfig(
-            Node node,
-            LayoutConfig defaultConfig,
-            Map<String, LayoutConfig> layoutConfigs) {
-
-        if (layoutConfigs != null && node.lcn != null
-                && !node.lcn.isEmpty()) {
-            LayoutConfig lc = layoutConfigs.get(node.lcn);
-            if (lc != null) return lc;
-        }
-        return defaultConfig;
-    }
-
-    private double nodeSize(Node node, LayoutConfig config) {
-        if (config.orientation == ORIENTATION_TOP ||
-            config.orientation == ORIENTATION_BOTTOM) {
-            return node.width;
-        }
-        return node.height;
-    }
-
-    private double getLayoutStep(Node node, LayoutConfig config) {
-        if (node.layout == LAYOUT_MIXED) {
-            return config.mixedHierarchyNodesSeparation;
-        }
-        return config.levelSeparation;
-    }
-
-    private double getMidpointOfChildren(Node node,
-                                          LayoutConfig config) {
-        if (node.children.isEmpty()) return 0;
-
-        Node firstChild = node.children.get(0);
-        Node lastChild = node.children.get(
-                node.children.size() - 1);
-
-        double firstX = firstChild.prelim;
-        double lastX = lastChild.prelim + nodeSize(lastChild, config);
-
-        return (firstX + lastX) / 2.0 - nodeSize(node, config) / 2.0;
-    }
-
-    private double getMaxNodeHeight(Node node) {
-        // Bir leveldagi maksimal height
-        return node.height;
-    }
-
-    private void handlePartnersAndAssistants(Node node,
-                                              LayoutConfig config) {
-        if (!node.hasPartners) return;
-
-        double partnerOffset = node.partnerSeparation;
-
-        for (Node child : node.children) {
-            if (child.partnerType == 1) {
-                // Right partner
-                child.prelim = node.prelim
-                        + nodeSize(node, config)
-                        + partnerOffset;
-            } else if (child.partnerType == 2) {
-                // Left partner
-                child.prelim = node.prelim
-                        - nodeSize(child, config)
-                        - partnerOffset;
-            } else if (child.isAssistant) {
-                // Assistant - yuqorida turadigan maxsus node
-                child.prelim = node.prelim
-                        + nodeSize(node, config) / 2.0
-                        - nodeSize(child, config) / 2.0;
-                child.y = node.y
-                        + config.assistantSeparation;
-            }
-        }
-    }
-
-    // ==================== TREE SHIFTING ====================
-
-    private void shiftTree(Node node, double shift) {
-        node.x += shift;
-        for (Node child : node.children) {
-            shiftTree(child, shift);
-        }
-        for (Node stChild : node.stChildren) {
-            shiftTree(stChild, shift);
-        }
-    }
-
-    private void shiftTreeY(Node node, double shift) {
-        node.y += shift;
-        for (Node child : node.children) {
-            shiftTreeY(child, shift);
-        }
-        for (Node stChild : node.stChildren) {
-            shiftTreeY(stChild, shift);
-        }
-    }
-
-    // ==================== ORIENTATION TRANSFORMS ====================
-
-    private void mirrorY(Node node) {
-        node.y = -node.y - node.height;
-        for (Node child : node.children) mirrorY(child);
-        for (Node stChild : node.stChildren) mirrorY(stChild);
-    }
-
-    private void mirrorX(Node node) {
-        node.x = -node.x - node.width;
-        for (Node child : node.children) mirrorX(child);
-        for (Node stChild : node.stChildren) mirrorX(stChild);
-    }
-
-    private void swapXY(Node node) {
-        double temp = node.x;
-        node.x = node.y;
-        node.y = temp;
-
-        temp = node.width;
-        node.width = node.height;
-        node.height = temp;
-
-        for (Node child : node.children) swapXY(child);
-        for (Node stChild : node.stChildren) swapXY(stChild);
-    }
-
-    // ==================== BOUNDS ====================
-
-    private double getMinX(Node node) {
-        double min = node.x;
-        for (Node child : node.children) {
-            min = Math.min(min, getMinX(child));
-        }
-        return min;
-    }
-
-    private double getMaxX(Node node) {
-        double max = node.x + node.width;
-        for (Node child : node.children) {
-            max = Math.max(max, getMaxX(child));
-        }
-        return max;
-    }
-
-    private double getMinY(Node node) {
-        double min = node.y;
-        for (Node child : node.children) {
-            min = Math.min(min, getMinY(child));
-        }
-        return min;
-    }
-
-    private double getMaxY(Node node) {
-        double max = node.y + node.height;
-        for (Node child : node.children) {
-            max = Math.max(max, getMaxY(child));
-        }
-        return max;
-    }
-
-    // ==================== COLLECT RESULTS ====================
-
-    private void collectPositions(Node node,
-                                   Map<String, NodePosition> result,
-                                   int orientation) {
-        NodePosition pos = new NodePosition(
-                node.id, node.x, node.y,
-                node.width, node.height);
-
-        if (node.leftNeighbor != null) {
-            pos.leftNeighborId = node.leftNeighbor.id;
-        }
-        if (node.rightNeighbor != null) {
-            pos.rightNeighborId = node.rightNeighbor.id;
-        }
-
-        result.put(node.id, pos);
-
-        for (Node child : node.children) {
-            collectPositions(child, result, orientation);
-        }
-        for (Node stChild : node.stChildren) {
-            collectPositions(stChild, result, orientation);
-        }
-    }
-
-    // ==================== NEIGHBOR SETTING ====================
-
-    private void setNeighbors(List<Node> roots, int orientation) {
-        Map<Integer, List<Node>> levelMap = new HashMap<>();
-        for (Node root : roots) {
-            collectByLevel(root, 0, levelMap);
-        }
-
-        for (List<Node> levelNodes : levelMap.values()) {
-            // X ga qarab sort
-            levelNodes.sort((a, b) -> Double.compare(a.x, b.x));
-
-            for (int i = 0; i < levelNodes.size(); i++) {
-                if (i > 0) {
-                    levelNodes.get(i).leftNeighbor
-                            = levelNodes.get(i - 1);
-                }
-                if (i < levelNodes.size() - 1) {
-                    levelNodes.get(i).rightNeighbor
-                            = levelNodes.get(i + 1);
-                }
-            }
-        }
-    }
-
-    private void collectByLevel(Node node, int level,
-                                 Map<Integer, List<Node>> levelMap) {
-        levelMap.computeIfAbsent(level, k -> new ArrayList<>())
-                .add(node);
-        for (Node child : node.children) {
-            collectByLevel(child, level + 1, levelMap);
-        }
-    }
-
-    // ==================== JSON OUTPUT (OrgChart formatda) ====================
+    // ==================== APPORTION (key overlap-fix method) ====================
 
     /**
-     * OrgChart.js ga mos JSON formatga o'girish
-     * Result format: {"nodeId": {"p": [x, y, w, h], "ln": "...", "rn": "..."}}
+     * Buchheim apportion — moves conflicting subtrees apart.
+     *
+     * vir = right inner contour of left part (starts at v)
+     * vor = right outer contour of right part (starts at v)
+     * vil = left  inner contour of left part  (starts at leftSibling(v))
+     * vol = left  outer contour of right part (starts at leftmostSibling(v))
      */
-    public Map<String, Object> toOrgChartFormat(
-            Map<String, NodePosition> positions) {
+    private Node apportion(Node v, Node defaultAncestor, LayoutConfig cfg) {
+        Node w = leftSibling(v);
+        if (w == null) return defaultAncestor;
 
-        Map<String, Object> result = new HashMap<>();
+        Node vir = v,              vor = v;
+        Node vil = w;
+        Node vol = leftmostSibling(v);
 
-        for (Map.Entry<String, NodePosition> entry
-                : positions.entrySet()) {
+        double sir = v.mod,   sor = v.mod;
+        double sil = w.mod,   sol = (vol != null ? vol.mod : 0);
 
-            NodePosition pos = entry.getValue();
-            Map<String, Object> nodeResult = new HashMap<>();
+        while (nextRight(vil) != null && nextLeft(vir) != null) {
+            vil = nextRight(vil);
+            vir = nextLeft(vir);
+            if (vol != null) vol = nextLeft(vol);
+            vor = nextRight(vor);
 
-            // p = [x, y, width, height]
-            nodeResult.put("p", new double[]{
-                    pos.x, pos.y, pos.width, pos.height
-            });
+            vor.ancestor = v;
 
-            if (pos.leftNeighborId != null) {
-                nodeResult.put("ln", pos.leftNeighborId);
+            double shift = (vil.prelim + sil) - (vir.prelim + sir)
+                         + nodeWidth(vil) + cfg.siblingSeparation;
+            if (shift > 0) {
+                Node anc = ancestor(vil, v, defaultAncestor);
+                moveSubtree(anc, v, shift);
+                sir += shift;
+                sor += shift;
             }
-            if (pos.rightNeighborId != null) {
-                nodeResult.put("rn", pos.rightNeighborId);
-            }
-
-            result.put(entry.getKey(), nodeResult);
+            sil += vil.mod;
+            sir += vir.mod;
+            if (vol != null) sol += vol.mod;
+            sor += vor.mod;
         }
 
-        return result;
+        // Extend threads
+        if (nextRight(vil) != null && nextRight(vor) == null) {
+            vor.thread  = nextRight(vil);
+            vor.mod    += sil - sor;
+        }
+        if (nextLeft(vir) != null && nextLeft(vol != null ? vol : v) == null) {
+            if (vol != null) {
+                vol.thread = nextLeft(vir);
+                vol.mod   += sir - sol;
+            }
+            defaultAncestor = v;
+        }
+        return defaultAncestor;
     }
 
-    // ==================== TEST ====================
+    // ==================== MOVE SUBTREE ====================
 
-    public static void main(String[] args) {
-        OrgChartLayoutCalculator calc
-                = new OrgChartLayoutCalculator();
+    private void moveSubtree(Node wl, Node wr, double shift) {
+        int subtrees = wr.number - wl.number;
+        if (subtrees <= 0) return;
+        wr.change  -= shift / subtrees;
+        wr.shift   += shift;
+        wl.change  += shift / subtrees;
+        wr.prelim  += shift;
+        wr.mod     += shift;
+    }
 
-        // Test nodelar
-        List<NodeInput> nodes = new ArrayList<>();
+    // ==================== EXECUTE SHIFTS ====================
 
-        NodeInput ceo = new NodeInput();
-        ceo.id = "1";
-        ceo.width = 250;
-        ceo.height = 120;
-        nodes.add(ceo);
-
-        NodeInput vp1 = new NodeInput();
-        vp1.id = "2";
-        vp1.parentId = "1";
-        vp1.width = 250;
-        vp1.height = 120;
-        nodes.add(vp1);
-
-        NodeInput vp2 = new NodeInput();
-        vp2.id = "3";
-        vp2.parentId = "1";
-        vp2.width = 250;
-        vp2.height = 120;
-        nodes.add(vp2);
-
-        NodeInput emp1 = new NodeInput();
-        emp1.id = "4";
-        emp1.parentId = "2";
-        emp1.width = 250;
-        emp1.height = 120;
-        nodes.add(emp1);
-
-        // Layout config
-        Map<String, LayoutConfig> configs = new HashMap<>();
-        LayoutConfig base = new LayoutConfig();
-        base.orientation = ORIENTATION_TOP;
-        base.levelSeparation = 60;
-        base.siblingSeparation = 20;
-        base.subtreeSeparation = 40;
-        configs.put("base", base);
-
-        // Hisoblash
-        List<String> rootIds = Arrays.asList("1");
-        Map<String, NodePosition> positions
-                = calc.calculate(nodes, rootIds, configs);
-
-        // Natija
-        for (Map.Entry<String, NodePosition> entry
-                : positions.entrySet()) {
-            NodePosition pos = entry.getValue();
-            System.out.printf(
-                "Node %s: x=%.1f, y=%.1f, w=%.1f, h=%.1f%n",
-                entry.getKey(),
-                pos.x, pos.y, pos.width, pos.height
-            );
+    private void executeShifts(Node v) {
+        double shift = 0, change = 0;
+        List<Node> ch = v.children;
+        for (int i = ch.size() - 1; i >= 0; i--) {
+            Node w  = ch.get(i);
+            w.prelim += shift;
+            w.mod    += shift;
+            change   += w.change;
+            shift    += w.shift + change;
         }
+    }
 
-        // OrgChart formatda
-        calc.toOrgChartFormat(positions);
+    // ==================== SECOND WALK ====================
+
+    private void secondWalk(Node v, double m, int depth,
+                             LayoutConfig cfg,
+                             Map<Integer, Double> levelMaxH) {
+        v.x = v.prelim + m;
+        v.y = yForLevel(v.level, cfg, levelMaxH);
+
+        double newM = m + v.mod;
+        for (Node c : v.children)
+            secondWalk(c, newM, depth + 1, cfg, levelMaxH);
+
+        // stChildren with no primary parent
+        for (Node c : v.stChildren)
+            if (c.parent == null)
+                secondWalk(c, newM, depth + 1, cfg, levelMaxH);
+    }
+
+    // ==================== CONTOUR TRAVERSAL ====================
+
+    /** Left contour: leftmost child, else thread */
+    private Node nextLeft(Node v) {
+        return v.children.isEmpty() ? v.thread : v.children.get(0);
+    }
+
+    /** Right contour: rightmost child, else thread */
+    private Node nextRight(Node v) {
+        return v.children.isEmpty()
+                ? v.thread
+                : v.children.get(v.children.size() - 1);
+    }
+
+    // ==================== SIBLING HELPERS ====================
+
+    private Node leftSibling(Node v) {
+        if (v.parent == null) return null;
+        List<Node> sibs = v.parent.children;
+        int idx = v.number - 1;
+        return idx > 0 ? sibs.get(idx - 1) : null;
+    }
+
+    private Node leftmostSibling(Node v) {
+        if (v.parent == null || v.number == 1) return null;
+        return v.parent.children.get(0);
+    }
+
+    private Node ancestor(Node vil, Node v, Node defaultAncestor) {
+        if (v.parent != null && v.parent.children.contains(vil.ancestor))
+            return vil.ancestor;
+        return defaultAncestor;
+    }
+
+    private double nodeWidth(Node n) { return n.width; }
+
+    // ==================== BOUNDS & SHIFT ====================
+
+    private double subtreeMinX(Node v) {
+        double min = v.x;
+        for (Node c : v.children)   min = Math.min(min, subtreeMinX(c));
+        for (Node c : v.stChildren)
+            if (c.parent == null) min = Math.min(min, subtreeMinX(c));
+        return min;
+    }
+    private double subtreeMaxX(Node v) {
+        double max = v.x + v.width;
+        for (Node c : v.children)   max = Math.max(max, subtreeMaxX(c));
+        for (Node c : v.stChildren)
+            if (c.parent == null) max = Math.max(max, subtreeMaxX(c));
+        return max;
+    }
+    private double subtreeMinY(Node v) {
+        double min = v.y;
+        for (Node c : v.children)   min = Math.min(min, subtreeMinY(c));
+        for (Node c : v.stChildren)
+            if (c.parent == null) min = Math.min(min, subtreeMinY(c));
+        return min;
+    }
+    private double subtreeMaxY(Node v) {
+        double max = v.y + v.height;
+        for (Node c : v.children)   max = Math.max(max, subtreeMaxY(c));
+        for (Node c : v.stChildren)
+            if (c.parent == null) max = Math.max(max, subtreeMaxY(c));
+        return max;
+    }
+    private void shiftSubtreeX(Node v, double dx) {
+        v.x += dx;
+        for (Node c : v.children)   shiftSubtreeX(c, dx);
+        for (Node c : v.stChildren)
+            if (c.parent == null) shiftSubtreeX(c, dx);
+    }
+    private void shiftSubtreeY(Node v, double dy) {
+        v.y += dy;
+        for (Node c : v.children)   shiftSubtreeY(c, dy);
+        for (Node c : v.stChildren)
+            if (c.parent == null) shiftSubtreeY(c, dy);
+    }
+
+    // ==================== ORIENTATION ====================
+
+    private void applyOrientation(Node root, int orientation) {
+        if (orientation == ORIENTATION_BOTTOM)       mirrorY(root);
+        else if (orientation == ORIENTATION_RIGHT)   swapXY(root);
+        else if (orientation == ORIENTATION_LEFT)  { swapXY(root); mirrorX(root); }
+    }
+
+    private void mirrorY(Node v) {
+        v.y = -v.y - v.height;
+        for (Node c : v.children)   mirrorY(c);
+        for (Node c : v.stChildren) mirrorY(c);
+    }
+    private void mirrorX(Node v) {
+        v.x = -v.x - v.width;
+        for (Node c : v.children)   mirrorX(c);
+        for (Node c : v.stChildren) mirrorX(c);
+    }
+    private void swapXY(Node v) {
+        double t = v.x; v.x = v.y; v.y = t;
+        t = v.width; v.width = v.height; v.height = t;
+        for (Node c : v.children)   swapXY(c);
+        for (Node c : v.stChildren) swapXY(c);
+    }
+
+    // ==================== NEIGHBORS ====================
+
+    private void setNeighbors(List<Node> roots, int orientation) {
+        Map<Integer, List<Node>> levelMap = new LinkedHashMap<>();
+        Set<String> seen = new HashSet<>();
+        for (Node root : roots) collectByLevel(root, levelMap, seen);
+
+        boolean horiz = (orientation == ORIENTATION_TOP
+                      || orientation == ORIENTATION_BOTTOM);
+
+        for (List<Node> nodes : levelMap.values()) {
+            nodes.sort(horiz
+                    ? Comparator.comparingDouble(n -> n.x)
+                    : Comparator.comparingDouble(n -> n.y));
+            for (int i = 0; i < nodes.size(); i++) {
+                Node n = nodes.get(i);
+                n.leftNeighbor  = (i > 0)              ? nodes.get(i-1) : null;
+                n.rightNeighbor = (i < nodes.size()-1)  ? nodes.get(i+1) : null;
+            }
+        }
+    }
+
+    private void collectByLevel(Node v, Map<Integer, List<Node>> map, Set<String> seen) {
+        if (seen.contains(v.id)) return;
+        seen.add(v.id);
+        map.computeIfAbsent(v.level, k -> new ArrayList<>()).add(v);
+        for (Node c : v.children)   collectByLevel(c, map, seen);
+        for (Node c : v.stChildren) collectByLevel(c, map, seen);
+    }
+
+    // ==================== COLLECT POSITIONS ====================
+
+    private void collectPositions(Node v,
+                                  Map<String, NodePosition> result,
+                                  Set<String> visited) {
+        if (visited.contains(v.id)) return;
+        visited.add(v.id);
+
+        NodePosition pos = new NodePosition(v.id, v.x, v.y, v.width, v.height);
+        if (v.leftNeighbor  != null) pos.leftNeighborId  = v.leftNeighbor.id;
+        if (v.rightNeighbor != null) pos.rightNeighborId = v.rightNeighbor.id;
+        result.put(v.id, pos);
+
+        for (Node c : v.children)   collectPositions(c, result, visited);
+        for (Node c : v.stChildren) collectPositions(c, result, visited);
+    }
+
+    // ==================== OUTPUT FORMAT ====================
+
+    public Map<String, Object> toOrgChartFormat(Map<String, NodePosition> positions) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Map.Entry<String, NodePosition> e : positions.entrySet()) {
+            NodePosition p = e.getValue();
+            Map<String, Object> node = new LinkedHashMap<>();
+            node.put("p", new double[]{p.x, p.y, p.width, p.height});
+            if (p.leftNeighborId  != null) node.put("ln", p.leftNeighborId);
+            if (p.rightNeighborId != null) node.put("rn", p.rightNeighborId);
+            result.put(e.getKey(), node);
+        }
+        return result;
     }
 }
