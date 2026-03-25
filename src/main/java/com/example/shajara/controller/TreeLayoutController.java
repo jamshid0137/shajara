@@ -48,14 +48,10 @@ public class TreeLayoutController {
      */
     @GetMapping("/tree/{treeId}")
     public ResponseEntity<TreeLayoutResponseDto> getByTree(@PathVariable Long treeId) {
-        FamilyTree tree = familyTreeRepository.findById(treeId)
+        familyTreeRepository.findById(treeId)
                 .orElseThrow(() -> new NotFoundException("FamilyTree topilmadi: " + treeId));
 
-        Long lastPersonId = tree.getLastPersonId();
-        if (lastPersonId == null) {
-            throw new NotFoundException("Bu daraxtda lastPersonId yo'q. Avval biror personni oching.");
-        }
-
-        return ResponseEntity.ok(treeLayoutService.calculateLayout(lastPersonId));
+        // Yangi mantiq: Berilgan daraxtga tegishli barcha personlarni qaytarish
+        return ResponseEntity.ok(treeLayoutService.calculateFullTreeLayout(treeId));
     }
 }

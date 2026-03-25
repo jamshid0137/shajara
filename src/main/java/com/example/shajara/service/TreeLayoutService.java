@@ -98,6 +98,59 @@ public class TreeLayoutService {
     }
 
     // =========================================================
+    // BUTUN DARAXTNI QAYTARISH — Barcha persons
+    // FamilyTree.js OrgChartLayoutCalculator yordamida koordinatalarni o'zi hisoblab oladi.
+    // Biz bu yerda faqatgina daraxtdagi harcha ma'lumotni to'kib beramiz.
+    // =========================================================
+    @Transactional(readOnly = true)
+    public TreeLayoutResponseDto calculateFullTreeLayout(Long treeId) {
+        List<Person> allPersons = personRepository.findAllByFamilyTreeId(treeId);
+
+        Map<Long, TreeNodeDto> nodeMap = new LinkedHashMap<>();
+        List<TreeLayoutResponseDto.ConnectionDto> connections = new ArrayList<>();
+
+        for (Person p : allPersons) {
+            nodeMap.put(p.getId(), TreeNodeDto.builder()
+                    .id(p.getId())
+                    .name(p.getName())
+                    .gender(p.getGender() != null ? p.getGender().name() : null)
+                    .role(null) // Role dynamically assigned usually, or left blank for full tree
+                    .birthDate(p.getBirthDate())
+                    .diedDate(p.getDiedDate())
+                    .photoUrl(p.getPhotoUrl())
+                    .treeId(p.getFamilyTree() != null ? p.getFamilyTree().getId() : null)
+                    .fatherId(p.getFatherId())
+                    .motherId(p.getMotherId())
+                    .x(0.0) // front-end da baribir OrgChartLayoutCalculator ga yuboriladi
+                    .y(0.0)
+                    .build());
+
+            // Parent connections
+            if (p.getFatherId() != null) {
+                connections.add(conn(p.getFatherId(), p.getId(), "PARENT_CHILD"));
+            }
+            if (p.getMotherId() != null) {
+                connections.add(conn(p.getMotherId(), p.getId(), "PARENT_CHILD"));
+            }
+
+            // Spouse connections
+            List<Person> spouses = relationRepository.findAllSpousesNative(p.getId());
+            for (Person sp : spouses) {
+                // Duplicate connectionlar tushmasligi uchun
+                if (p.getId() < sp.getId()) {
+                    connections.add(conn(p.getId(), sp.getId(), "SPOUSE"));
+                }
+            }
+        }
+
+        return TreeLayoutResponseDto.builder()
+                .nodes(new ArrayList<>(nodeMap.values()))
+                .connections(connections)
+                .minX(0).maxX(0).minY(0).maxY(0)
+                .build();
+    }
+
+    // =========================================================
     // OTA-ONALAR (Y = -V_SPACE)
     // =========================================================
     private void placeParents(Person center,

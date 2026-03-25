@@ -756,10 +756,34 @@
                         SPOUSE: '💑 Juft', CHILD: '👶 Farzand', SIBLING: '👫 Aka-uka'
                     };
 
-                    /* ── Faqat YANGI nodelarni qo'shamiz ── */
+                    // Barcha node id'larni saqlaymiz, faqat shular pids/fid ga kira oladi (stpid crash oldini olish uchun)
+                    var allKnownIds = {};
+                    Object.keys(_loadedFtNodes).forEach(function(i) { allKnownIds[i] = true; });
+                    rawNodes.forEach(function(n) { allKnownIds[n.id] = true; });
+
+                    /* ── Faqat YANGI nodelarni qo'shamiz va MA'LUMOTI yangilangan eski nodelarni yangilaymiz ── */
                     var newNodes = [];
+                    var hasUpdates = false;
+
                     rawNodes.forEach(function (n) {
-                        if (_loadedFtNodes[n.id]) return;
+                        var rawPids = spouseMap[n.id] || [];
+                        var safePids = rawPids.filter(function(pid) { return allKnownIds[pid]; });
+                        var safeFid = (fidMap[n.id] !== undefined && allKnownIds[fidMap[n.id]]) ? fidMap[n.id] : null;
+                        var safeMid = (midMap[n.id] !== undefined && allKnownIds[midMap[n.id]]) ? midMap[n.id] : null;
+
+                        if (_loadedFtNodes[n.id]) {
+                            // Eski node ni faqat qo'shimcha qarindoshlari topilganda yangilaymiz
+                            var existing = _loadedFtNodes[n.id];
+                            if (!existing.fid && safeFid) { existing.fid = safeFid; hasUpdates = true; }
+                            if (!existing.mid && safeMid) { existing.mid = safeMid; hasUpdates = true; }
+                            safePids.forEach(function(pid) {
+                                if (existing.pids && existing.pids.indexOf(pid) === -1) {
+                                    existing.pids.push(pid);
+                                    hasUpdates = true;
+                                }
+                            });
+                            return;
+                        }
 
                         var years = '';
                         if (n.birthDate || n.diedDate) {
@@ -768,9 +792,9 @@
                         }
                         var newNode = {
                             id: n.id,
-                            fid: fidMap[n.id] !== undefined ? fidMap[n.id] : null,
-                            mid: midMap[n.id] !== undefined ? midMap[n.id] : null,
-                            pids: spouseMap[n.id] || [],
+                            fid: safeFid,
+                            mid: safeMid,
+                            pids: safePids,
                             name: n.name || '—',
                             roleLabel: roleLbls[n.role] || (n.role || ''),
                             years: years,
@@ -785,13 +809,13 @@
                         if (n.treeId) _nodeTreeIdMap[n.id] = n.treeId;
                     });
 
-                    if (newNodes.length > 0) {
+                    if (newNodes.length > 0 || hasUpdates) {
                         /* Barcha (eski + yangi) nodelarni birga yuklash */
                         var allNodes = Object.values(_loadedFtNodes);
                         chart.load(allNodes);
-                        console.log('[showRelatives] ' + newNodes.length + ' yangi node qo\'shildi, jami: ' + allNodes.length);
+                        console.log("[showRelatives] yangi/yangilangan node qo'shildi, jami: " + allNodes.length);
                     } else {
-                        console.log('[showRelatives] Yangi node yo\'q — hammasi allaqachon ko\'rinmoqda');
+                        console.log("[showRelatives] Yangi node yo'q - hammasi allaqachon ko'rinmoqda");
                     }
                 })
                 .catch(function (e) {
