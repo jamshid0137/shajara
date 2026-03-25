@@ -92,6 +92,22 @@
         if (null != n.ln) e.leftNeighbor  = a ? a[n.ln]  : null;
         if (null != n.rn) e.rightNeighbor = a ? a[n.rn] : null;
 
+        // ── ROOT CAUSE FIX: isPartner yo'nalishini faktual pozitsiyaga qarab to'g'irla ──
+        // Muammo: FamilyTree.js ichida isPartner=2 (left) deb saqlangan bo'lsa-da,
+        // biz Java layoutda uni o'NGGA joylashtiramiz (x > parent.x).
+        // Render _linkRightToLeft (isPartner=2) ni chaqiradi va strelka Sanamjon.right + 14
+        // ga tushadi (tashqarida).
+        // Yechim: faktual x pozitsiyaga qarab isPartner ni yangilaymiz.
+        if (e.isPartner && e.parent && typeof e.parent.x === 'number') {
+            var oldPartner = e.isPartner;
+            e.isPartner = (e.x >= e.parent.x) ? 1 : 2;
+            if (oldPartner !== e.isPartner) {
+                console.log('[FT-override] isPartner CORRECTED for node ' + e.id +
+                            ': ' + oldPartner + ' → ' + e.isPartner +
+                            ' (e.x=' + e.x.toFixed(0) + ', parent.x=' + e.parent.x.toFixed(0) + ')');
+            }
+        }
+
         if (e.stChildren) for (var o = 0; o < e.stChildren.length; o++)
             FamilyTree.remote._fromResDTO(e.stChildren[o], t, i, r, a);
         if (e.children) for (o = 0; o < e.children.length; o++)
