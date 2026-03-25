@@ -226,18 +226,21 @@ public class OrgChartLayoutCalculator {
             Node parentNode = nodeMap.get(e.getKey());
             if (parentNode == null) continue;
 
-            double xRight = parentNode.x + parentNode.width + cfg.partnerNodeSeparation;
-            double xLeft  = parentNode.x - cfg.partnerNodeSeparation;
+            // Juftlar orasidagi masofa: kamida 4x ko'proq (render chiziqni to'g'ri chizadi)
+            double gap = cfg.partnerNodeSeparation * 4;
+
+            double xRight = parentNode.x + parentNode.width + gap;
+            double xLeft  = parentNode.x - gap;
 
             for (Node partner : e.getValue()) {
                 // partnerType: 1 = right, 2 = left, 0/default = right
                 if (partner.partnerType == 2) {
                     xLeft -= partner.width;
                     partner.x = xLeft;
-                    xLeft -= cfg.partnerNodeSeparation;
+                    xLeft -= gap;
                 } else {
                     partner.x = xRight;
-                    xRight += partner.width + cfg.partnerNodeSeparation;
+                    xRight += partner.width + gap;
                 }
                 partner.y = parentNode.y; // SAME ROW!
                 partner.level = parentNode.level; // same level
@@ -252,7 +255,12 @@ public class OrgChartLayoutCalculator {
             }
         }
 
-        // 9. setNeighbors → THEN collectPositions
+        // 9. Fix sibling overlaps caused by partners expanding each child's width
+        //    (Buchheim knew only node widths; partners add extra space AFTER layout)
+        for (Node root : roots)
+            fixSiblingOverlaps(root, cfg);
+
+        // 10. setNeighbors → THEN collectPositions
         setNeighbors(new ArrayList<>(roots), cfg.orientation);
 
         Map<String, NodePosition> result = new LinkedHashMap<>();
@@ -261,6 +269,39 @@ public class OrgChartLayoutCalculator {
             collectPositions(root, result, visited);
 
         return result;
+    }
+
+    // ==================== LEVEL HELPER ====================
+
+    /**
+     * After partners are re-added to parent.children, siblings may overlap
+     * because partners take extra horizontal space Buchheim didn't know about.
+     * Left-to-right scan: if curr's full family (including partners+subtree)
+     * overlaps with next sibling, push next (and all subsequent) right.
+     */
+    private void fixSiblingOverlaps(Node v, LayoutConfig cfg) {
+        // Collect non-partner children (regular order)
+        List<Node> reg = new ArrayList<>();
+        for (Node c : v.children) if (!c.isPartner) reg.add(c);
+
+        for (int i = 0; i + 1 < reg.size(); i++) {
+            Node curr = reg.get(i);
+            Node next = reg.get(i + 1);
+
+            // Right edge of curr's FULL family (includes partners & their subtrees)
+            double currRight = subtreeMaxX(curr);
+            // Left edge of next's family (may have left-side partners)
+            double nextLeft  = subtreeMinX(next);
+
+            double overlap = currRight + cfg.siblingSeparation - nextLeft;
+            if (overlap > 0.01) {
+                // Shift next AND all right siblings by overlap amount
+                for (int j = i + 1; j < reg.size(); j++)
+                    shiftSubtreeX(reg.get(j), overlap);
+            }
+        }
+        // Recurse into non-partner children
+        for (Node c : v.children) if (!c.isPartner) fixSiblingOverlaps(c, cfg);
     }
 
     // ==================== LEVEL HELPER ====================
