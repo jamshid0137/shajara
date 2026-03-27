@@ -44,6 +44,10 @@ public class LayoutController {
         // ── REQUEST LOG ────────────────────────────────────────────────
         try {
             String bodyJson = mapper.writeValueAsString(body);
+            java.nio.file.Files.writeString(
+                java.nio.file.Paths.get("d:\\загрузки\\shajara\\last_req.json"),
+                bodyJson
+            );
             log.info("=== /api/layout1/calculate REQUEST ===");
             log.info("Keys: {}", body.keySet());
             // n (nodes)

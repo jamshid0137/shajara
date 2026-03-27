@@ -158,7 +158,17 @@ public class OrgChartLayoutCalculator {
                     node.parent = p;
                     p.children.add(node);
                 }
+            } else if (inp.stParentId != null) {
+                // BUG FIX: Bitta parent qolganda FamilyTree.js pid ni null qilib stpid yuboradi.
+                // Ularni oddiy children sifatida ko'rishimiz kerak, aks holda firstWalk da o'tkazib yuborilib,
+                // x=0 koordinatada ustma-ust tushib qoladi.
+                Node sp = nodeMap.get(inp.stParentId);
+                if (sp != null) {
+                    node.parent = sp;
+                    sp.children.add(node);
+                }
             }
+            // stChildren ro'yxatiga ham qo'shamiz (library reference uchun)
             if (inp.stParentId != null) {
                 Node sp = nodeMap.get(inp.stParentId);
                 if (sp != null)
@@ -208,7 +218,6 @@ public class OrgChartLayoutCalculator {
         // 7. Layout each root subtree (partners temporarily excluded)
         boolean horiz = (cfg.orientation == ORIENTATION_TOP
                 || cfg.orientation == ORIENTATION_BOTTOM);
-        double offset = 0;
 
         for (Node root : roots) {
             // a) assign levels
@@ -223,17 +232,6 @@ public class OrgChartLayoutCalculator {
 
             // d) apply orientation transforms
             applyOrientation(root, cfg.orientation);
-
-            // e) shift to offsetX so trees don't overlap
-            if (horiz) {
-                double minX = subtreeMinX(root);
-                shiftSubtreeX(root, -minX + offset);
-                offset = subtreeMaxX(root) + cfg.subtreeSeparation;
-            } else {
-                double minY = subtreeMinY(root);
-                shiftSubtreeY(root, -minY + offset);
-                offset = subtreeMaxY(root) + cfg.subtreeSeparation;
-            }
         }
 
         // 8. PARTNER NODES reposition: parent bilan bir xil Y, yoniga X
@@ -302,6 +300,21 @@ public class OrgChartLayoutCalculator {
         // (Buchheim knew only node widths; partners add extra space AFTER layout)
         for (Node root : roots)
             fixSiblingOverlaps(root, cfg);
+
+        // 9.5. Offset roots so disconnected trees or subtrees don't overlap each other
+        // This MUST be done AFTER partners are added and fixSiblingOverlaps is applied!
+        double offset = 0;
+        for (Node root : roots) {
+            if (horiz) {
+                double minX = subtreeMinX(root);
+                shiftSubtreeX(root, -minX + offset);
+                offset = subtreeMaxX(root) + cfg.subtreeSeparation + 100; // Qo'shimcha 100px uzoqlik ishonch uchun
+            } else {
+                double minY = subtreeMinY(root);
+                shiftSubtreeY(root, -minY + offset);
+                offset = subtreeMaxY(root) + cfg.subtreeSeparation + 100;
+            }
+        }
 
         // 10. setNeighbors → THEN collectPositions
         setNeighbors(new ArrayList<>(roots), cfg.orientation);
@@ -373,12 +386,19 @@ public class OrgChartLayoutCalculator {
      * overlaps with next sibling, push next (and all subsequent) right.
      */
     private void fixSiblingOverlaps(Node v, LayoutConfig cfg) {
-        // Collect non-partner children (regular order)
+        // 1. Recurse into non-partner children FIRST (BOTTOM-UP traversal)
+        // This ensures child bounding boxes are fully expanded BEFORE we measure them at the parent level!
+        for (Node c : v.children)
+            if (!c.isPartner)
+                fixSiblingOverlaps(c, cfg);
+
+        // 2. Collect non-partner children (regular order)
         List<Node> reg = new ArrayList<>();
         for (Node c : v.children)
             if (!c.isPartner)
                 reg.add(c);
 
+        // 3. Fix sibling overlaps at THIS level
         for (int i = 0; i + 1 < reg.size(); i++) {
             Node curr = reg.get(i);
             Node next = reg.get(i + 1);
@@ -395,10 +415,6 @@ public class OrgChartLayoutCalculator {
                     shiftSubtreeX(reg.get(j), overlap);
             }
         }
-        // Recurse into non-partner children
-        for (Node c : v.children)
-            if (!c.isPartner)
-                fixSiblingOverlaps(c, cfg);
     }
 
     // ==================== LEVEL HELPER ====================
