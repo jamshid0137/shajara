@@ -201,11 +201,37 @@ public class OrgChartLayoutCalculator {
         // (isPartner=true bo'lgan nodelar parent bilan bir xil qatorda bo'lishi kerak)
         Map<String, List<Node>> partnersByParent = new LinkedHashMap<>();
         for (Node n : nodeMap.values()) {
-            if (n.isPartner && n.parent != null) {
-                partnersByParent
-                        .computeIfAbsent(n.parent.id, k -> new ArrayList<>())
-                        .add(n);
-                n.parent.children.remove(n); // Buchheim uchun vaqtinchalik olib chiqamiz
+            List<Node> extractedPartners = new ArrayList<>();
+            for (Node c : n.children) {
+                if (c.isPartner) {
+                    extractedPartners.add(c);
+                }
+            }
+            if (!extractedPartners.isEmpty()) {
+                partnersByParent.put(n.id, extractedPartners);
+                
+                Iterator<Node> it = n.children.iterator();
+                while (it.hasNext()) {
+                    Node c = it.next();
+                    if (c.isPartner) {
+                        it.remove(); // Buchheim uchun vaqtinchalik olib chiqamiz
+                    } else if (c.id != null && c.id.startsWith("_ft_child_group_")) {
+                        try {
+                            String numStr = c.id.substring("_ft_child_group_".length());
+                            int pIndex = Integer.parseInt(numStr);
+                            // Agar guruh formati mos bo'lsa, mos partnerga farzand sifatida biriktirish
+                            // Shu orqali kutilgan qaram (Add son/daughter) lar faqat o'sha ota/onaning
+                            // layoutPartnerSubtree funksiyasi orqali uning aniq tagida markazlashib qo'yilladi.
+                            if (pIndex >= 0 && pIndex < extractedPartners.size()) {
+                                Node partner = extractedPartners.get(pIndex);
+                                partner.children.add(c);
+                                c.parent = partner;
+                                it.remove();
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
             }
         }
 
@@ -221,11 +247,11 @@ public class OrgChartLayoutCalculator {
 
         for (Node root : roots) {
             // a) assign levels
-            assignLevels(root, 0, new HashSet<>());
+            assignLevels(root, 0, new HashSet<>(), layoutConfigs);
 
             // b) Buchheim init + firstWalk (partners excluded)
             initBuchheim(root);
-            firstWalk(root, cfg);
+            firstWalk(root, cfg, layoutConfigs);
 
             // c) secondWalk — sets final x/y relative to origin
             secondWalk(root, -root.prelim, 0, cfg, levelMaxH);
@@ -271,7 +297,7 @@ public class OrgChartLayoutCalculator {
                 parentNode.children.add(partner);
 
                 // Partner ning o'z farzandlarini to'g'ri joylash (y=0 bug oldini ol)
-                layoutPartnerSubtree(partner, cfg, levelMaxH);
+                layoutPartnerSubtree(partner, cfg, levelMaxH, layoutConfigs);
             }
 
             // ── LEFT partners: [S3 (extra gap)]────[S2]──[S1]── Main ──
@@ -292,7 +318,7 @@ public class OrgChartLayoutCalculator {
                 parentNode.children.add(partner);
 
                 // Partner ning o'z farzandlarini to'g'ri joylash (y=0 bug oldini ol)
-                layoutPartnerSubtree(partner, cfg, levelMaxH);
+                layoutPartnerSubtree(partner, cfg, levelMaxH, layoutConfigs);
             }
         }
 
@@ -338,7 +364,7 @@ public class OrgChartLayoutCalculator {
      * farzandlar uchun to'g'ri x va y ni hisoblaydi.
      */
     private void layoutPartnerSubtree(Node partner,
-            LayoutConfig cfg, Map<Integer, Double> levelMaxH) {
+            LayoutConfig cfg, Map<Integer, Double> levelMaxH, Map<String, LayoutConfig> layoutConfigs) {
         // Non-partner farzandlar bormi?
         boolean hasRealChildren = false;
         for (Node c : partner.children)
@@ -350,11 +376,11 @@ public class OrgChartLayoutCalculator {
         double savedY = partner.y;
 
         // Levels ni partner dan boshlab qayta belgilaymiz
-        assignLevels(partner, partner.level, new HashSet<>());
+        assignLevels(partner, partner.level, new HashSet<>(), layoutConfigs);
 
         // Mini Buchheim: init → firstWalk → secondWalk
         initBuchheim(partner);
-        firstWalk(partner, cfg);
+        firstWalk(partner, cfg, layoutConfigs);
         // secondWalk ni 0-dan boshlash: partner.x = 0 atrofida hisoblash
         secondWalk(partner, -partner.prelim, 0, cfg, levelMaxH);
 
@@ -419,19 +445,37 @@ public class OrgChartLayoutCalculator {
 
     // ==================== LEVEL HELPER ====================
 
-    private void assignLevels(Node v, int level, Set<String> seen) {
+    private boolean isVerticalGroup(Node v, Map<String, LayoutConfig> configs) {
+        if (v == null || v.children.isEmpty() || configs == null) return false;
+        Node first = v.children.get(0);
+        LayoutConfig cfg = configs.get(first.lcn);
+        if (cfg != null && cfg.columns == 1) return true;
+        
+        // Fallback for strict Balkan OrgChart
+        return v.id.startsWith("_ft_child_group") || (first.lcn != null && first.lcn.contains("group"));
+    }
+
+    private void assignLevels(Node v, int level, Set<String> seen, Map<String, LayoutConfig> configs) {
         if (seen.contains(v.id))
             return;
         seen.add(v.id);
         v.level = level;
+
+        boolean vertical = isVerticalGroup(v, configs);
+        int nextLevel = level + 1;
+
         for (Node c : v.children) {
             // Partner nodelar parent bilan BIR XIL LEVEL (pastga emas, yoniga)
-            int childLevel = c.isPartner ? level : level + 1;
-            assignLevels(c, childLevel, seen);
+            int childLevel = c.isPartner ? level : nextLevel;
+            assignLevels(c, childLevel, seen, configs);
+            
+            if (vertical && !c.isPartner) {
+                nextLevel++; // ustma-ust tushishi uchun har biri yangi qavatga
+            }
         }
         for (Node c : v.stChildren)
             if (c.parent == null)
-                assignLevels(c, level + 1, seen);
+                assignLevels(c, nextLevel, seen, configs);
     }
 
     private void collectLevelHeights(Node v, Map<Integer, Double> map, Set<String> seen) {
@@ -479,29 +523,38 @@ public class OrgChartLayoutCalculator {
 
     // ==================== FIRST WALK ====================
 
-    private void firstWalk(Node v, LayoutConfig cfg) {
+    private void firstWalk(Node v, LayoutConfig cfg, Map<String, LayoutConfig> configs) {
+        boolean verticalSelf = v.parent != null && isVerticalGroup(v.parent, configs);
+
         if (v.children.isEmpty()) {
             // Leaf node
             Node w = leftSibling(v);
-            if (w != null)
+            if (w != null && !verticalSelf)
                 v.prelim = w.prelim + nodeWidth(w) + cfg.siblingSeparation;
             else
-                v.prelim = 0;
+                v.prelim = 0; // vertical children don't shift right
         } else {
             Node defaultAncestor = v.children.get(0);
+            boolean verticalKids = isVerticalGroup(v, configs);
+
             for (Node w : v.children) {
-                firstWalk(w, cfg);
-                defaultAncestor = apportion(w, defaultAncestor, cfg);
+                firstWalk(w, cfg, configs);
+                if (!verticalKids) {
+                    defaultAncestor = apportion(w, defaultAncestor, cfg);
+                }
             }
-            executeShifts(v);
+            if (!verticalKids) {
+                executeShifts(v);
+            }
 
             double firstPrelim = v.children.get(0).prelim;
             double lastPrelim = v.children.get(v.children.size() - 1).prelim
                     + nodeWidth(v.children.get(v.children.size() - 1));
-            double midpoint = (firstPrelim + lastPrelim) / 2.0;
+            // For vertical stacked kids, midpoint is just 0 since they all have prelim=0
+            double midpoint = verticalKids ? 0.0 : (firstPrelim + lastPrelim) / 2.0;
 
             Node w = leftSibling(v);
-            if (w != null) {
+            if (w != null && !verticalSelf) {
                 v.prelim = w.prelim + nodeWidth(w) + cfg.siblingSeparation;
                 v.mod = v.prelim - midpoint;
             } else {
