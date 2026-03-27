@@ -21,6 +21,14 @@
             padding: 0;
         }
 
+        /* Matn va rasmlar o'z-o'zidan yo'qolmasligi uchun */
+        [data-n-id] text,
+        [data-n-id] image {
+            opacity: 1 !important;
+            display: block !important;
+            visibility: visible !important;
+        }
+
         :root {
             --bg: #0b0b1e;
             --bg2: #13132e;
@@ -499,6 +507,7 @@
                 enableSearch: true,
                 enablePan: true,
                 mouseScrool: FamilyTree.action.zoom,
+                lazyLoading: false,
 
                 nodeBinding: {
                     field_0: 'name',
@@ -531,10 +540,18 @@
                 /* ── Node o'ng-klik menyu ── */
                 nodeMenu: {
                     showRelMenu: {
-                        text: "📂 Ko'rsatish",
+                        text: "📂 Markaz qilish",
                         onClick: function (nodeId) {
-                            _loadedFtNodes = {};   /* keshni tozalaymiz */
-                            loadTree(nodeId);
+                            window.lastPersonId = nodeId;  /* oxirgi bosilgan person ni eslab qolish */
+                            _loadedFtNodes = {};   /* keshni tozalash */
+
+                            // ── MUHIM: treeId topib inputga o'rnatish qo'shildi! ──
+                            var tId = _nodeTreeIdMap[nodeId];
+                            if (tId && !document.getElementById('treeIdInput').value) {
+                                document.getElementById('treeIdInput').value = tId;
+                            }
+
+                            loadTree(null);        /* butun daraxtni qayta yuklash (full redraw) */
                         }
                     },
                     addParentMenu: {
@@ -758,8 +775,8 @@
 
                     // Barcha node id'larni saqlaymiz, faqat shular pids/fid ga kira oladi (stpid crash oldini olish uchun)
                     var allKnownIds = {};
-                    Object.keys(_loadedFtNodes).forEach(function(i) { allKnownIds[i] = true; });
-                    rawNodes.forEach(function(n) { allKnownIds[n.id] = true; });
+                    Object.keys(_loadedFtNodes).forEach(function (i) { allKnownIds[i] = true; });
+                    rawNodes.forEach(function (n) { allKnownIds[n.id] = true; });
 
                     /* ── Faqat YANGI nodelarni qo'shamiz va MA'LUMOTI yangilangan eski nodelarni yangilaymiz ── */
                     var newNodes = [];
@@ -767,7 +784,7 @@
 
                     rawNodes.forEach(function (n) {
                         var rawPids = spouseMap[n.id] || [];
-                        var safePids = rawPids.filter(function(pid) { return allKnownIds[pid]; });
+                        var safePids = rawPids.filter(function (pid) { return allKnownIds[pid]; });
                         var safeFid = (fidMap[n.id] !== undefined && allKnownIds[fidMap[n.id]]) ? fidMap[n.id] : null;
                         var safeMid = (midMap[n.id] !== undefined && allKnownIds[midMap[n.id]]) ? midMap[n.id] : null;
 
@@ -776,7 +793,7 @@
                             var existing = _loadedFtNodes[n.id];
                             if (!existing.fid && safeFid) { existing.fid = safeFid; hasUpdates = true; }
                             if (!existing.mid && safeMid) { existing.mid = safeMid; hasUpdates = true; }
-                            safePids.forEach(function(pid) {
+                            safePids.forEach(function (pid) {
                                 if (existing.pids && existing.pids.indexOf(pid) === -1) {
                                     existing.pids.push(pid);
                                     hasUpdates = true;
@@ -812,6 +829,21 @@
                     if (newNodes.length > 0 || hasUpdates) {
                         /* Barcha (eski + yangi) nodelarni birga yuklash */
                         var allNodes = Object.values(_loadedFtNodes);
+
+                        // ── MAJBURUIY XAVFSIZLIK (stpid crash) ──
+                        allNodes.forEach(function (node) {
+                            if (node.fid && node.mid) {
+                                var f = allNodes.find(function (x) { return x.id === node.fid; });
+                                var m = allNodes.find(function (x) { return x.id === node.mid; });
+                                if (f && m) {
+                                    if (!f.pids) f.pids = [];
+                                    if (!m.pids) m.pids = [];
+                                    if (f.pids.indexOf(m.id) === -1) f.pids.push(m.id);
+                                    if (m.pids.indexOf(f.id) === -1) m.pids.push(f.id);
+                                }
+                            }
+                        });
+
                         chart.load(allNodes);
                         console.log("[showRelatives] yangi/yangilangan node qo'shildi, jami: " + allNodes.length);
                     } else {
@@ -944,6 +976,21 @@
                 };
             });
 
+            // ── MAJBURUIY XAVFSIZLIK (stpid crash oldini olish) ──
+            // Agar farzandning fid va mid si mavjud bo'lsa, FamilyTree.js ularni
+            // avtomatik ravishda Spouse (juft) deb o'ylaydi. Agar ular pids da 
+            // bo'lmasa, undefined 'stpid' crash yuz beradi. Shuni yopamiz:
+            ftNodes.forEach(function (node) {
+                if (node.fid && node.mid) {
+                    var f = ftNodes.find(function (x) { return x.id === node.fid; });
+                    var m = ftNodes.find(function (x) { return x.id === node.mid; });
+                    if (f && m) {
+                        if (f.pids.indexOf(m.id) === -1) f.pids.push(m.id);
+                        if (m.pids.indexOf(f.id) === -1) m.pids.push(f.id);
+                    }
+                }
+            });
+
             /* ── 4. FamilyTree.js ga yuklash ── */
             if (!chart) { showError('Chart initsializatsiya qilinmagan!'); return; }
 
@@ -953,6 +1000,14 @@
             rawNodes.forEach(function (n) { if (n.treeId) _nodeTreeIdMap[n.id] = n.treeId; });
 
             chart.load(ftNodes);
+
+            /* Tanlangan odamni markazlashtirish (Ko'rsatish bosilganda) */
+            if (window.lastPersonId) {
+                setTimeout(function () {
+                    chart.center(window.lastPersonId);
+                    window.lastPersonId = null;  // saqlangan ID ni tozalash
+                }, 400); // render tugashini kutish
+            }
 
             /* ── 5. Statistika ── */
             document.getElementById('sTotal').textContent = ftNodes.length;
