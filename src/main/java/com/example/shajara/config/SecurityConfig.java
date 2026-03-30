@@ -51,7 +51,9 @@ public class SecurityConfig {
             "/api/layout/**",
             // v6 — OrgChart.js asosidagi tree6.html
             "/v6/**",
-            "/api/layout1/**"
+            "/api/layout1/**",
+            "/v7/**",
+            "/api/layout1new/**"
     };
 
     @Bean

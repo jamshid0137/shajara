@@ -1,0 +1,30 @@
+package com.example.shajara.dto.layoutnew;
+
+import lombok.*;
+
+import java.util.List;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class TreeLayoutResponseDtoNew {
+    private List<TreeNodeDtoNew> nodes;
+    private List<ConnectionDto> connections;
+
+    private double minX;
+    private double maxX;
+    private double minY;
+    private double maxY;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ConnectionDto {
+        private Long fromId;
+        private Long toId;
+        private String type; // PARENT_CHILD, SPOUSE
+    }
+}
+

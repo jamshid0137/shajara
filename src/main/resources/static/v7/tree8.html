@@ -9,9 +9,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
     <!-- FamilyTree.js (lokal nusxa, GitHub: BALKANGraph/FamilyTreeJS) -->
-    <script src="/v6/familytree.js"></script>
-    <!-- Override: Balkan Azure serveri o'rniga bizning /api/layout1/calculate -->
-    <script src="/v6/familytree-override.js"></script>
+    <script src="/v7/familytree.js"></script>
+    <!-- Override: Balkan Azure serveri o'rniga bizning /api/layout1new/calculate -->
+    <script src="/v7/familytree-override.js"></script>
     <style>
         *,
         *::before,
@@ -411,7 +411,7 @@
             <input id="tokenInput" class="inp" type="password" placeholder="🔑 Bearer Token">
             <input id="treeIdInput" class="inp" type="number" placeholder="🆔 Tree ID">
         </div>
-        <button class="btn btn-primary" onclick="loadTree()">Yuklash</button>
+        <button class="btn btn-primary" onclick="reloadTree(null)">Yuklash</button>
     </header>
 
     <!-- TREE CANVAS -->
@@ -454,7 +454,7 @@
         /* ================================================================
            SHAJARA — tree7.html JavaScript
            FamilyTree.js (GitHub: BALKANGraph/FamilyTreeJS) — OFLAYN rejim
-           familytree-override.js → /api/layout1/calculate (lokal Spring Boot)
+           familytree-override.js → /api/layout1new/calculate (lokal Spring Boot)
            Yondashuv: O'rtada JS MAPPER
            - Backend DTOlari o'zgarmaydi
            - TreeLayoutResponseDto → FamilyTree.js format — JS da maplanadi
@@ -491,7 +491,7 @@
         ──────────────────────────────────────────────────────────── */
         function initChart() {
             if (typeof FamilyTree === 'undefined') {
-                showError('FamilyTree.js yuklanmadi! /v6/familytree.js tekshiring.');
+                showError('FamilyTree.js yuklanmadi! /v7/familytree.js tekshiring.');
                 return;
             }
 
@@ -690,7 +690,7 @@
                     apiFetch('DELETE', '/api/persons/' + delId, null,
                         function () {
                             console.log('Person ' + delId + " o'chirildi");
-                            reloadTree();
+                            reloadTree(null);
                         },
                         function (err) {
                             showError("O'chirishda xatolik:\n" + err);
@@ -734,7 +734,7 @@
             var token = getToken();
             if (!token) { showError('Token kiritilmagan'); return; }
 
-            fetch('/api/layout/person/' + nodeId, {
+            fetch('/api/layoutnew/person/' + nodeId, {
                 headers: { 'Authorization': 'Bearer ' + token }
             })
                 .then(function (r) {
@@ -857,7 +857,7 @@
 
         /* ────────────────────────────────────────────────────────────
            TREE YUKLASH
-           GET /api/layout/tree/{treeId}  yoki  /api/layout/person/{id}
+           GET /api/layoutnew/tree/{treeId}  yoki  /api/layoutnew/person/{id}
            Qaytaradi: TreeLayoutResponseDto { nodes[], connections[] }
         ──────────────────────────────────────────────────────────── */
         function loadTree(personId) {
@@ -871,8 +871,8 @@
             hideError();
 
             var url = personId
-                ? '/api/layout/person/' + personId
-                : '/api/layout/tree/' + treeId;
+                ? '/api/layoutnew/person/' + personId
+                : '/api/layoutnew/tree/' + treeId;
 
             apiFetch('GET', url, null,
                 function (data) {
@@ -886,7 +886,7 @@
             );
         }
 
-        /* Amallar tugaganida treeId bo'yicha qayta yuklash — chart to'liq qayta initsializatsiya qilinadi */
+        /* Amallar tugaganida treeId bo'yicha qayta yuklash */
         function reloadTree(personId) {
             if (chart) {
                 try { chart.destroy(); } catch (e) {}
