@@ -25,49 +25,49 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ n: nodes, r: roots, c: configs })
         })
-        .then(function (res) {
-            if (!res.ok) {
-                console.error('[FT-override] HTTP Error:', res.status, res.statusText);
-                return null;
-            }
-            return res.json();
-        })
-        .then(function (result) {
-            if (!result) {
-                console.error('[FT-override] Server null response qaytardi!');
-                return;
-            }
-
-            // ── DIAGNOSTIC: server response ni ko'ramiz ─────────────
-            var keys = Object.keys(result);
-            console.group('[FT-override] Server response: ' + keys.length + ' ta node');
-            keys.slice(0, 5).forEach(function(k) {
-                var p = result[k].p;
-                console.log('  node ' + k + ' → x=' + p[0].toFixed(1) +
-                            ', y=' + p[1].toFixed(1) +
-                            ', w=' + p[2] + ', h=' + p[3]);
-            });
-            if (keys.length > 5) console.log('  ... va ' + (keys.length - 5) + ' ta ko\'proq');
-            console.groupEnd();
-
-            // ── DIAGNOSTIC: _fromResDTO OLDIDAN node.x/y ─────────────
-            // (shajara internal node bo'lsa, _fromResDTO dan keyin o'zgaradi)
-            console.log('[FT-override] _fromResDTO chaqirish oldidan rootlar:', roots);
-
-            // Wrap _fromResDTO to catch errors
-            var safeCallback = function(res) {
-                try {
-                    callback(res);
-                } catch (err) {
-                    console.error('[FT-override] callback() ichida xato:', err);
+            .then(function (res) {
+                if (!res.ok) {
+                    console.error('[FT-override] HTTP Error:', res.status, res.statusText);
+                    return null;
                 }
-            };
+                return res.json();
+            })
+            .then(function (result) {
+                if (!result) {
+                    console.error('[FT-override] Server null response qaytardi!');
+                    return;
+                }
 
-            safeCallback(result);
-        })
-        .catch(function (err) {
-            console.error('[FT-override] Fetch xatosi:', err);
-        });
+                // ── DIAGNOSTIC: server response ni ko'ramiz ─────────────
+                var keys = Object.keys(result);
+                console.group('[FT-override] Server response: ' + keys.length + ' ta node');
+                keys.slice(0, 5).forEach(function (k) {
+                    var p = result[k].p;
+                    console.log('  node ' + k + ' → x=' + p[0].toFixed(1) +
+                        ', y=' + p[1].toFixed(1) +
+                        ', w=' + p[2] + ', h=' + p[3]);
+                });
+                if (keys.length > 5) console.log('  ... va ' + (keys.length - 5) + ' ta ko\'proq');
+                console.groupEnd();
+
+                // ── DIAGNOSTIC: _fromResDTO OLDIDAN node.x/y ─────────────
+                // (shajara internal node bo'lsa, _fromResDTO dan keyin o'zgaradi)
+                console.log('[FT-override] _fromResDTO chaqirish oldidan rootlar:', roots);
+
+                // Wrap _fromResDTO to catch errors
+                var safeCallback = function (res) {
+                    try {
+                        callback(res);
+                    } catch (err) {
+                        console.error('[FT-override] callback() ichida xato:', err);
+                    }
+                };
+
+                safeCallback(result);
+            })
+            .catch(function (err) {
+                console.error('[FT-override] Fetch xatosi:', err);
+            });
     };
 
     // _fromResDTO ni patch qilib xatolar uchun null check qo'shamiz
@@ -76,7 +76,7 @@
         var n = t[e.id];
         if (!n) {
             console.warn('[FT-override] _fromResDTO: response da node topilmadi! id=' + e.id +
-                         ', type=' + typeof e.id);
+                ', type=' + typeof e.id);
             // Fallback: stChildren va children ni ham traversal qilamiz
             if (e.stChildren) for (var o = 0; o < e.stChildren.length; o++)
                 FamilyTree.remote._fromResDTO(e.stChildren[o], t, i, r, a);
@@ -89,7 +89,7 @@
         e.y = n.p[1];
         e.w = n.p[2];
         e.h = n.p[3];
-        if (null != n.ln) e.leftNeighbor  = a ? a[n.ln]  : null;
+        if (null != n.ln) e.leftNeighbor = a ? a[n.ln] : null;
         if (null != n.rn) e.rightNeighbor = a ? a[n.rn] : null;
 
         // ── BUS CHIZIQ FIX (frontend himoya) ──────────────────────────────
@@ -101,7 +101,7 @@
         // Yechim 2 (JS): Bu yerda ham partner nodelar uchun neighbor ni tozalaymiz.
         if (e.isPartner) {
             // Partner node bo'lsa — left/right neighbor yo'q
-            e.leftNeighbor  = null;
+            e.leftNeighbor = null;
             e.rightNeighbor = null;
         } else {
             // Oddiy node bo'lsa — uning neighbor'i partner bo'lmasin
@@ -121,8 +121,8 @@
             e.isPartner = (e.x >= e.parent.x) ? 1 : 2;
             if (oldPartner !== e.isPartner) {
                 console.log('[FT-override] isPartner CORRECTED for node ' + e.id +
-                            ': ' + oldPartner + ' → ' + e.isPartner +
-                            ' (e.x=' + e.x.toFixed(0) + ', parent.x=' + e.parent.x.toFixed(0) + ')');
+                    ': ' + oldPartner + ' → ' + e.isPartner +
+                    ' (e.x=' + e.x.toFixed(0) + ', parent.x=' + e.parent.x.toFixed(0) + ')');
             }
         }
 

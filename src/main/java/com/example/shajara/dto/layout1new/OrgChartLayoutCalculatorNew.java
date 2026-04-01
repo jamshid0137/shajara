@@ -413,6 +413,13 @@ public class OrgChartLayoutCalculatorNew {
             }
         }
 
+        // 10. GLOBAL LEVEL Y SINXRONIZATSIYA
+        // Muammo: bir odamning ko'p juftlari bo'lsa, uning bolalari pastroqqa tushadi.
+        // Lekin o'sha qatlamdagi boshqa odamlarning bolalari yuqorida qoladi.
+        // Yechim: har bir level uchun eng katta (eng past) Y ni topib,
+        //         shu qatlamdagi BARCHA nodelarni shu Y ga sinxronlashtirish.
+        synchronizeLevelY(roots, cfg, nodeMap, partnersByParent, hGap, vGap);
+
         setNeighbors(new ArrayList<>(roots), cfg.orientation);
 
         Map<String, NodePosition> result = new LinkedHashMap<>();
@@ -576,6 +583,121 @@ public class OrgChartLayoutCalculatorNew {
         for (Node p : nodeToPartners.getOrDefault(node.id, Collections.emptyList()))
             min = Math.min(min, subtreeMinX(p));
         return min;
+    }
+
+    // ==================== LEVEL Y SYNC ====================
+
+    /**
+     * Har bir qatlamdagi (level) nodlarning Y koordinatalarini sinxronlashtirish.
+     *
+     * Sabab: ko'p juftli (multi-spouse) personning bolalari pastroqqa tushadi
+     * (8.5-qadam tufayli). Lekin o'sha qatlamdagi boshqa personlarning bolalari
+     * yuqorida qoladi. Vizual natija: bir avlodning bolalari ikki xil balandlikda.
+     *
+     * Algoritm:
+     * 1. Barcha non-partner nodelarni level bo'yicha guruhlash
+     * 2. Har bir level uchun maxY ni topish (eng past joylashgan node)
+     * 3. Shu levelda Y < maxY bo'lgan nodelarni (va subtreeni) pastga siljitish
+     * 4. Partner pozitsiyalarini qayta tiklash (ular parent bilan birga turishi kerak)
+     */
+    private void synchronizeLevelY(
+            List<Node> roots,
+            LayoutConfig cfg,
+            Map<String, Node> nodeMap,
+            Map<String, List<Node>> partnersByParent,
+            double hGap, double vGap) {
+
+        // 1. Level bo'yicha non-partner nodelarni yig'amiz
+        Map<Integer, List<Node>> levelMap = new LinkedHashMap<>();
+        Set<String> seen = new HashSet<>();
+        for (Node root : roots)
+            collectNonPartnerByLevel(root, levelMap, seen);
+
+        // 2. Har bir level uchun maxY topib, siljitamiz
+        List<Integer> sortedLevels = new ArrayList<>(levelMap.keySet());
+        Collections.sort(sortedLevels);
+
+        for (int level : sortedLevels) {
+            List<Node> nodes = levelMap.get(level);
+            if (nodes == null || nodes.isEmpty()) continue;
+
+            // Shu qatlamdagi eng katta Y (eng pastdagi node)
+            double maxY = nodes.stream().mapToDouble(n -> n.y).max().orElse(0);
+
+            // Agar hammasi bir xil Y da bo'lsa -- skip
+            boolean allSame = nodes.stream().allMatch(n -> Math.abs(n.y - maxY) < 1.0);
+            if (allSame) continue;
+
+            // Y < maxY bo'lgan nodelarni va ularning subtreelerini pastga siljitamiz
+            for (Node n : nodes) {
+                if (n.y < maxY - 1.0) {
+                    shiftSubtreeY(n, maxY - n.y);
+                }
+            }
+        }
+
+        // 3. Partner pozitsiyalarini qayta tiklash
+        // (subtree shift partner nodelarni ham siljitgan bo'lishi mumkin,
+        //  lekin partner ota bilan bir xil Y da turishi kerak)
+        for (Map.Entry<String, List<Node>> e : partnersByParent.entrySet()) {
+            Node parentNode = nodeMap.get(e.getKey());
+            if (parentNode == null) continue;
+
+            List<Node> rightPartners = new ArrayList<>();
+            List<Node> leftPartners = new ArrayList<>();
+            for (Node partner : e.getValue()) {
+                if (partner.partnerType == 2)
+                    leftPartners.add(partner);
+                else
+                    rightPartners.add(partner);
+            }
+
+            if (!leftPartners.isEmpty()) {
+                double maxW = leftPartners.stream().mapToDouble(p -> p.width).max().orElse(0);
+                double xLeft = parentNode.x - maxW - hGap;
+                double curY = parentNode.y;
+                for (Node partner : leftPartners) {
+                    double dx = xLeft - partner.x;
+                    double dy = curY - partner.y;
+                    shiftSubtreeX(partner, dx);
+                    shiftSubtreeY(partner, dy);
+                    curY += partner.height + vGap;
+                }
+            }
+
+            if (!rightPartners.isEmpty()) {
+                double xRight = parentNode.x + parentNode.width + hGap;
+                double curY = parentNode.y;
+                for (Node partner : rightPartners) {
+                    double dx = xRight - partner.x;
+                    double dy = curY - partner.y;
+                    shiftSubtreeX(partner, dx);
+                    shiftSubtreeY(partner, dy);
+                    curY += partner.height + vGap;
+                }
+            }
+        }
+    }
+
+    /**
+     * Non-partner nodelarni level bo'yicha yig'adi.
+     * Partner nodelar sinxronizatsiyadan chiqariladi chunki
+     * ular parent bilan bir Y da turishi kerak (parent Y o'zgarsa, ular ham o'zgaradi).
+     */
+    private void collectNonPartnerByLevel(Node v, Map<Integer, List<Node>> map, Set<String> seen) {
+        if (seen.contains(v.id)) return;
+        seen.add(v.id);
+
+        // Faqat non-partner nodelarni qo'shamiz
+        if (!v.isPartner) {
+            map.computeIfAbsent(v.level, k -> new ArrayList<>()).add(v);
+        }
+
+        for (Node c : v.children)
+            collectNonPartnerByLevel(c, map, seen);
+        for (Node c : v.stChildren)
+            if (c.parent == null)
+                collectNonPartnerByLevel(c, map, seen);
     }
 
     // ==================== LEVEL HELPER ====================
@@ -1082,46 +1204,68 @@ public class OrgChartLayoutCalculatorNew {
 
     // ==================== NEIGHBORS ====================
 
+    /**
+     * Qo'shnilarni belgilash:
+     * Faqat bir xil parentning NON-PARTNER bolalari o'zaro qo'shni bo'ladi.
+     * Bu chiziqlarni bolalar ustidan o'tib ketishini oldini oladi.
+     *
+     * Oldingi koordinata-bazali yondashuv muammosi:
+     *   - Partner (spouse) va child bir xil Y ga ega bo'lsa,
+     *     ular turli darajada bo'lsa ham bir guruhga tushib,
+     *     noto'g'ri qo'shnilik o'rnatilardi va chiziq bolalar ustidan o'tardi.
+     */
     private void setNeighbors(List<Node> roots, int orientation) {
-        Map<Integer, List<Node>> levelMap = new LinkedHashMap<>();
+        boolean horiz = (orientation == ORIENTATION_TOP || orientation == ORIENTATION_BOTTOM);
         Set<String> seen = new HashSet<>();
         for (Node root : roots)
-            collectByLevel(root, levelMap, seen);
+            setNeighborsForSubtree(root, horiz, seen);
+    }
 
-        boolean horiz = (orientation == ORIENTATION_TOP
-                || orientation == ORIENTATION_BOTTOM);
+    private void setNeighborsForSubtree(Node v, boolean horiz, Set<String> seen) {
+        if (seen.contains(v.id))
+            return;
+        seen.add(v.id);
 
-        for (List<Node> nodes : levelMap.values()) {
-            nodes.sort(horiz
+        // Faqat NON-PARTNER bolalarni qo'shni qilib belgilaymiz
+        List<Node> realChildren = new ArrayList<>();
+        for (Node c : v.children) {
+            if (!c.isPartner)
+                realChildren.add(c);
+        }
+
+        if (!realChildren.isEmpty()) {
+            // X (yoki Y vertikal uchun) bo'yicha tartibla
+            realChildren.sort(horiz
                     ? Comparator.comparingDouble(n -> n.x)
                     : Comparator.comparingDouble(n -> n.y));
 
-            // BUG FIX: Partner (spouse) nodelar va oddiy nodelarni ajratamiz.
-            // Aks holda Robiya (spouse) Quvonch ning rightNeighbor bo'lib,
-            // FamilyTree.js chiziqni Robiya gacha tortib ketadi — xato!
-            // Har bir guruh ichida o'zaro neighbor o'rnatamiz.
-            List<Node> regular = new ArrayList<>();
-            List<Node> partners = new ArrayList<>();
-            for (Node n : nodes) {
-                if (n.isPartner)
-                    partners.add(n);
-                else
-                    regular.add(n);
-            }
-
-            // Oddiy nodelar: faqat o'zaro neighbor
-            for (int i = 0; i < regular.size(); i++) {
-                Node n = regular.get(i);
-                n.leftNeighbor = (i > 0) ? regular.get(i - 1) : null;
-                n.rightNeighbor = (i < regular.size() - 1) ? regular.get(i + 1) : null;
-            }
-            // Partner nodelar: neighbor o'rnatilmaydi (FamilyTree.js partner uchun alohida
-            // link chizadi)
-            for (Node n : partners) {
-                n.leftNeighbor = null;
-                n.rightNeighbor = null;
+            for (int i = 0; i < realChildren.size(); i++) {
+                Node n = realChildren.get(i);
+                n.leftNeighbor = (i > 0) ? realChildren.get(i - 1) : null;
+                n.rightNeighbor = (i < realChildren.size() - 1) ? realChildren.get(i + 1) : null;
             }
         }
+
+        // Rekursiv barcha bolalarga ham qo'llamiz
+        for (Node c : v.children)
+            setNeighborsForSubtree(c, horiz, seen);
+        for (Node c : v.stChildren)
+            if (c.parent == null)
+                setNeighborsForSubtree(c, horiz, seen);
+    }
+
+    private void collectByCoordinate(Node v, Map<Long, List<Node>> map, Set<String> seen, boolean horiz) {
+        if (seen.contains(v.id))
+            return;
+        seen.add(v.id);
+        
+        long key = Math.round(horiz ? v.y : v.x);
+        map.computeIfAbsent(key, k -> new ArrayList<>()).add(v);
+        
+        for (Node c : v.children)
+            collectByCoordinate(c, map, seen, horiz);
+        for (Node c : v.stChildren)
+            collectByCoordinate(c, map, seen, horiz);
     }
 
     private void collectByLevel(Node v, Map<Integer, List<Node>> map, Set<String> seen) {
