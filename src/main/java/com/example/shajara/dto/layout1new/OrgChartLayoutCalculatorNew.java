@@ -14,7 +14,8 @@ import java.util.*;
 @Component
 public class OrgChartLayoutCalculatorNew {
 
-    // в”Ђв”Ђ Constants в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+    // в”Ђв”Ђ Constants
+    // в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
     public static final int ORIENTATION_TOP = 0;
     public static final int ORIENTATION_BOTTOM = 1;
     public static final int ORIENTATION_RIGHT = 2;
@@ -29,11 +30,12 @@ public class OrgChartLayoutCalculatorNew {
     public static final int LAYOUT_TREE_RIGHT = 6;
     public static final int LAYOUT_GRID = -1;
 
-    // в”Ђв”Ђ Public DTOs в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+    // в”Ђв”Ђ Public DTOs
+    // в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
     public static class LayoutConfig {
         public int orientation = ORIENTATION_TOP;
-        public double levelSeparation = 60;
+        public double levelSeparation = 100; // farzandlarni biroz pastga tushirish uchun 60 dan 100 ga oshirildi
         public double mixedHierarchyNodesSeparation = 15;
         public double assistantSeparation = 100;
         public double subtreeSeparation = 40;
@@ -78,7 +80,8 @@ public class OrgChartLayoutCalculatorNew {
         }
     }
 
-    // в”Ђв”Ђ Internal node (Buchheim fields) в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+    // в”Ђв”Ђ Internal node (Buchheim fields)
+    // в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
 
     private static class Node {
         // identity
@@ -159,8 +162,10 @@ public class OrgChartLayoutCalculatorNew {
                     p.children.add(node);
                 }
             } else if (inp.stParentId != null) {
-                // BUG FIX: Bitta parent qolganda FamilyTree.js pid ni null qilib stpid yuboradi.
-                // Ularni oddiy children sifatida ko'rishimiz kerak, aks holda firstWalk da o'tkazib yuborilib,
+                // BUG FIX: Bitta parent qolganda FamilyTree.js pid ni null qilib stpid
+                // yuboradi.
+                // Ularni oddiy children sifatida ko'rishimiz kerak, aks holda firstWalk da
+                // o'tkazib yuborilib,
                 // x=0 koordinatada ustma-ust tushib qoladi.
                 Node sp = nodeMap.get(inp.stParentId);
                 if (sp != null) {
@@ -209,7 +214,7 @@ public class OrgChartLayoutCalculatorNew {
             }
             if (!extractedPartners.isEmpty()) {
                 partnersByParent.put(n.id, extractedPartners);
-                
+
                 Iterator<Node> it = n.children.iterator();
                 while (it.hasNext()) {
                     Node c = it.next();
@@ -221,7 +226,8 @@ public class OrgChartLayoutCalculatorNew {
                             int pIndex = Integer.parseInt(numStr);
                             // Agar guruh formati mos bo'lsa, mos partnerga farzand sifatida biriktirish
                             // Shu orqali kutilgan qaram (Add son/daughter) lar faqat o'sha ota/onaning
-                            // layoutPartnerSubtree funksiyasi orqali uning aniq tagida markazlashib qo'yilladi.
+                            // layoutPartnerSubtree funksiyasi orqali uning aniq tagida markazlashib
+                            // qo'yilladi.
                             if (pIndex >= 0 && pIndex < extractedPartners.size()) {
                                 Node partner = extractedPartners.get(pIndex);
                                 partner.children.add(c);
@@ -260,75 +266,92 @@ public class OrgChartLayoutCalculatorNew {
             applyOrientation(root, cfg.orientation);
         }
 
-        // 8. PARTNER NODES reposition: parent bilan bir xil Y, yoniga X
+        // 8. PARTNER NODES: Vertikal ustun — parent.y DAN BOSHLAB pastga.
+        // Parent node doim YUQORIDA qoladi (tepa-tekislash).
+        // Spouselar parent ostiga ketma-ket joylashadi.
+        // Ko'p spouse bo'lsa: parent yuqorida, bolalar pastga suradi (8.5-qadam).
+        //
+        // hGap = parentdan spouse ustunigacha gorizontal bo'shliq
+        // vGap = spouselar orasidagi vertikal bo'shliq
+        double hGap = cfg.partnerNodeSeparation * 4; // gorizontal: 60px (2x kengroq)
+        double vGap = cfg.partnerNodeSeparation; // vertikal: 15px (kichik, ixcham ustun)
+
         for (Map.Entry<String, List<Node>> e : partnersByParent.entrySet()) {
             Node parentNode = nodeMap.get(e.getKey());
             if (parentNode == null)
                 continue;
 
-            // Juftlar orasidagi masofa: 4x ko'proq
-            double gap = cfg.partnerNodeSeparation * 4;
-
-            // Right va left partnerlarni alohida ajratamiz (navbatma-navbat)
+            // partnerType=1 -> RIGHT, partnerType=2 -> LEFT
             List<Node> rightPartners = new ArrayList<>();
             List<Node> leftPartners = new ArrayList<>();
-            boolean putRight = true;
             for (Node partner : e.getValue()) {
-                if (putRight) {
-                    rightPartners.add(partner);
-                } else {
+                if (partner.partnerType == 2)
                     leftPartners.add(partner);
+                else
+                    rightPartners.add(partner);
+            }
+
+            // -- LEFT: parent.y dan boshlab pastga, chap tomonda ---------------
+            if (!leftPartners.isEmpty()) {
+                double maxW = leftPartners.stream().mapToDouble(p -> p.width).max().orElse(0);
+                double xLeft = parentNode.x - maxW - hGap;
+                double curY = parentNode.y; // parent bilan tepa-tekislash
+                for (Node partner : leftPartners) {
+                    partner.x = xLeft;
+                    partner.y = curY;
+                    partner.level = parentNode.level;
+                    curY += partner.height + vGap;
+                    parentNode.children.add(partner);
+                    layoutPartnerSubtree(partner, cfg, levelMaxH, layoutConfigs);
                 }
-                putRight = !putRight;
             }
 
-            // в”Ђв”Ђ RIGHT partners: Main в”Ђв”Ђ[S1]в”Ђв”Ђ[S2]в”Ђв”Ђв”Ђв”Ђ[S3 (extra gap before last)] в”Ђв”Ђ
-            double xRight = parentNode.x + parentNode.width + gap;
-            for (int ri = 0; ri < rightPartners.size(); ri++) {
-                Node partner = rightPartners.get(ri);
+            // -- RIGHT: parent.y dan boshlab pastga, o'ng tomonda --------------
+            if (!rightPartners.isEmpty()) {
+                double xRight = parentNode.x + parentNode.width + hGap;
+                double curY = parentNode.y; // parent bilan tepa-tekislash
+                for (Node partner : rightPartners) {
+                    partner.x = xRight;
+                    partner.y = curY;
+                    partner.level = parentNode.level;
+                    curY += partner.height + vGap;
+                    parentNode.children.add(partner);
+                    layoutPartnerSubtree(partner, cfg, levelMaxH, layoutConfigs);
+                }
+            }
+        }
 
-                // Agar bir nechta spousedan oxirgisi bo'lsa вЂ” extra gap qo'sh
-                boolean isLastRight = (ri == rightPartners.size() - 1) && (ri > 0);
-                if (isLastRight)
-                    xRight += gap * 0.5; // oxirgi uchun yarim gap ko'proq
+        // 8.5. CHILDREN PUSH DOWN: Spouse ustun pastga chiqqanda, bolalarni pastga sur.
+        // Ko'p spouse bo'lsa: spouse'larning eng pastki nuqtasidan keyin bolalar
+        // boshlanadi.
+        // Bu "farzandlar pastga siljiydi" hodisasini ta'minlaydi.
+        for (Map.Entry<String, List<Node>> e : partnersByParent.entrySet()) {
+            Node parentNode = nodeMap.get(e.getKey());
+            if (parentNode == null)
+                continue;
 
-                partner.x = xRight;
-                partner.y = parentNode.y;
-                partner.level = parentNode.level;
-                xRight += partner.width + gap;
-
-                parentNode.children.add(partner);
-
-                // Partner ning o'z farzandlarini to'g'ri joylash (y=0 bug oldini ol)
-                layoutPartnerSubtree(partner, cfg, levelMaxH, layoutConfigs);
+            // Barcha spouse'larning eng pastki nuqtasi
+            double maxSpouseBottom = parentNode.y + parentNode.height;
+            for (Node partner : e.getValue()) {
+                double bottom = partner.y + partner.height;
+                if (bottom > maxSpouseBottom)
+                    maxSpouseBottom = bottom;
             }
 
-            // в”Ђв”Ђ LEFT partners: [S3 (extra gap)]в”Ђв”Ђв”Ђв”Ђ[S2]в”Ђв”Ђ[S1]в”Ђв”Ђ Main в”Ђв”Ђ
-            double xLeft = parentNode.x - gap;
-            for (int li = 0; li < leftPartners.size(); li++) {
-                Node partner = leftPartners.get(li);
+            // Bolalar kamida shu nuqtadan + levelSeparation pastda bo'lishi kerak
+            double requiredChildY = maxSpouseBottom + cfg.levelSeparation;
 
-                boolean isLastLeft = (li == leftPartners.size() - 1) && (li > 0);
-                if (isLastLeft)
-                    xLeft -= gap * 0.5; // oxirgi uchun yarim gap ko'proq
-
-                xLeft -= partner.width;
-                partner.x = xLeft;
-                partner.y = parentNode.y;
-                partner.level = parentNode.level;
-                xLeft -= gap;
-
-                parentNode.children.add(partner);
-
-                // Partner ning o'z farzandlarini to'g'ri joylash (y=0 bug oldini ol)
-                layoutPartnerSubtree(partner, cfg, levelMaxH, layoutConfigs);
+            for (Node child : parentNode.children) {
+                if (!child.isPartner && child.y < requiredChildY) {
+                    shiftSubtreeY(child, requiredChildY - child.y);
+                }
             }
         }
 
         // 9. Fix sibling overlaps caused by partners expanding each child's width
         // (Buchheim knew only node widths; partners add extra space AFTER layout)
         for (Node root : roots)
-            fixSiblingOverlaps(root, cfg);
+            fixSiblingOverlaps(root, cfg, partnersByParent);
 
         // 9.5. Offset roots so disconnected trees or subtrees don't overlap each other
         // This MUST be done AFTER partners are added and fixSiblingOverlaps is applied!
@@ -345,7 +368,51 @@ public class OrgChartLayoutCalculatorNew {
             }
         }
 
-        // 10. setNeighbors в†’ THEN collectPositions
+        // 9.9. FINAL PARTNER POSITION FIX
+        // Barcha overlap fix qadamlaridan KEYIN partner pozitsiyalarini qayta
+        // hisoblash,
+        // shunda ular turli masofalarda yoki ustma-ust qolib ketmasdan har doim bir xil
+        // masofada bo'ladi.
+        for (Map.Entry<String, List<Node>> e : partnersByParent.entrySet()) {
+            Node parentNode = nodeMap.get(e.getKey());
+            if (parentNode == null)
+                continue;
+
+            List<Node> rightPartners = new ArrayList<>();
+            List<Node> leftPartners = new ArrayList<>();
+            for (Node partner : e.getValue()) {
+                if (partner.partnerType == 2)
+                    leftPartners.add(partner);
+                else
+                    rightPartners.add(partner);
+            }
+
+            if (!leftPartners.isEmpty()) {
+                double maxW = leftPartners.stream().mapToDouble(p -> p.width).max().orElse(0);
+                double xLeft = parentNode.x - maxW - hGap;
+                double curY = parentNode.y;
+                for (Node partner : leftPartners) {
+                    double dx = xLeft - partner.x;
+                    double dy = curY - partner.y;
+                    shiftSubtreeX(partner, dx);
+                    shiftSubtreeY(partner, dy);
+                    curY += partner.height + vGap;
+                }
+            }
+
+            if (!rightPartners.isEmpty()) {
+                double xRight = parentNode.x + parentNode.width + hGap;
+                double curY = parentNode.y;
+                for (Node partner : rightPartners) {
+                    double dx = xRight - partner.x;
+                    double dy = curY - partner.y;
+                    shiftSubtreeX(partner, dx);
+                    shiftSubtreeY(partner, dy);
+                    curY += partner.height + vGap;
+                }
+            }
+        }
+
         setNeighbors(new ArrayList<>(roots), cfg.orientation);
 
         Map<String, NodePosition> result = new LinkedHashMap<>();
@@ -371,8 +438,12 @@ public class OrgChartLayoutCalculatorNew {
         // Non-partner farzandlar bormi?
         boolean hasRealChildren = false;
         for (Node c : partner.children)
-            if (!c.isPartner) { hasRealChildren = true; break; }
-        if (!hasRealChildren) return;
+            if (!c.isPartner) {
+                hasRealChildren = true;
+                break;
+            }
+        if (!hasRealChildren)
+            return;
 
         // Partner ning x va y ni saqlab olamiz (biz allaqachon to'g'ri set qildik)
         double savedX = partner.x;
@@ -413,13 +484,17 @@ public class OrgChartLayoutCalculatorNew {
      * because partners take extra horizontal space Buchheim didn't know about.
      * Left-to-right scan: if curr's full family (including partners+subtree)
      * overlaps with next sibling, push next (and all subsequent) right.
+     *
+     * BUG FIX: When shifting a sibling, also shift that sibling's own partner
+     * nodes (spouses). Without this, the sibling moves but its spouses stay
+     * behind and cause overlaps.
      */
-    private void fixSiblingOverlaps(Node v, LayoutConfig cfg) {
+    private void fixSiblingOverlaps(Node v, LayoutConfig cfg,
+            Map<String, List<Node>> nodeToPartners) {
         // 1. Recurse into non-partner children FIRST (BOTTOM-UP traversal)
-        // This ensures child bounding boxes are fully expanded BEFORE we measure them at the parent level!
         for (Node c : v.children)
             if (!c.isPartner)
-                fixSiblingOverlaps(c, cfg);
+                fixSiblingOverlaps(c, cfg, nodeToPartners);
 
         // 2. Collect non-partner children (regular order)
         List<Node> reg = new ArrayList<>();
@@ -427,33 +502,92 @@ public class OrgChartLayoutCalculatorNew {
             if (!c.isPartner)
                 reg.add(c);
 
-        // 3. Fix sibling overlaps at THIS level
+        if (reg.isEmpty())
+            return;
+
+        // 3. Fix sibling overlaps at THIS level using accumulated left nodes
+        List<Node> accumulatedLeftNodes = new ArrayList<>();
+        collectAllNodesWithPartners(reg.get(0), accumulatedLeftNodes);
+
         for (int i = 0; i + 1 < reg.size(); i++) {
-            Node curr = reg.get(i);
             Node next = reg.get(i + 1);
 
-            // Right edge of curr's FULL family (includes partners & their subtrees)
-            double currRight = subtreeMaxX(curr);
-            // Left edge of next's family (may have left-side partners)
-            double nextLeft = subtreeMinX(next);
+            List<Node> nextNodes = new ArrayList<>();
+            collectAllNodesWithPartners(next, nextNodes);
 
-            double overlap = currRight + cfg.siblingSeparation - nextLeft;
-            if (overlap > 0.01) {
-                // Shift next AND all right siblings by overlap amount
-                for (int j = i + 1; j < reg.size(); j++)
-                    shiftSubtreeX(reg.get(j), overlap);
+            double maxOverlap = 0;
+            for (Node a : accumulatedLeftNodes) {
+                for (Node b : nextNodes) {
+                    boolean yOverlaps = (a.y < b.y + b.height) && (b.y < a.y + a.height);
+                    if (yOverlaps) {
+                        double overlap = a.x + a.width + cfg.siblingSeparation - b.x;
+                        if (overlap > maxOverlap) {
+                            maxOverlap = overlap;
+                        }
+                    }
+                }
+            }
+
+            if (maxOverlap > 0.01) {
+                // Shift next AND all right siblings by maxOverlap amount
+                // Note: partners are already in sib.children, so shiftSubtreeX shifts them
+                // automatically.
+                for (int j = i + 1; j < reg.size(); j++) {
+                    Node sib = reg.get(j);
+                    shiftSubtreeX(sib, maxOverlap);
+                }
+            }
+
+            accumulatedLeftNodes.addAll(nextNodes);
+        }
+    }
+
+    private void collectAllNodesWithPartners(Node v, List<Node> list) {
+        if (v == null)
+            return;
+        list.add(v);
+        for (Node c : v.children) {
+            collectAllNodesWithPartners(c, list);
+        }
+        for (Node c : v.stChildren) {
+            if (c.parent == null) {
+                collectAllNodesWithPartners(c, list);
             }
         }
+    }
+
+    /**
+     * Right boundary of a node's full family:
+     * the node's own subtree + all of its partner (spouse) subtrees.
+     */
+    private double fullFamilyMaxX(Node node, Map<String, List<Node>> nodeToPartners) {
+        double max = subtreeMaxX(node);
+        for (Node p : nodeToPartners.getOrDefault(node.id, Collections.emptyList()))
+            max = Math.max(max, subtreeMaxX(p));
+        return max;
+    }
+
+    /**
+     * Left boundary of a node's full family:
+     * the node's own subtree + all of its partner (spouse) subtrees.
+     */
+    private double fullFamilyMinX(Node node, Map<String, List<Node>> nodeToPartners) {
+        double min = subtreeMinX(node);
+        for (Node p : nodeToPartners.getOrDefault(node.id, Collections.emptyList()))
+            min = Math.min(min, subtreeMinX(p));
+        return min;
     }
 
     // ==================== LEVEL HELPER ====================
 
     private boolean isVerticalGroup(Node v, Map<String, LayoutConfig> configs) {
-        if (v == null || v.children.isEmpty() || configs == null) return false;
+        if (v == null || v.children.isEmpty() || configs == null)
+            return false;
         Node first = v.children.get(0);
         LayoutConfig cfg = configs.get(first.lcn);
-        if (cfg != null && cfg.columns == 1) return true;
-        
+        if (cfg != null && cfg.columns == 1)
+            return true;
+
         // Fallback for strict Balkan OrgChart
         return v.id.startsWith("_ft_child_group") || (first.lcn != null && first.lcn.contains("group"));
     }
@@ -471,7 +605,7 @@ public class OrgChartLayoutCalculatorNew {
             // Partner nodelar parent bilan BIR XIL LEVEL (pastga emas, yoniga)
             int childLevel = c.isPartner ? level : nextLevel;
             assignLevels(c, childLevel, seen, configs);
-            
+
             if (vertical && !c.isPartner) {
                 nextLevel++; // ustma-ust tushishi uchun har biri yangi qavatga
             }
@@ -814,6 +948,138 @@ public class OrgChartLayoutCalculatorNew {
             swapXY(c);
     }
 
+    // ==================== GLOBAL LEVEL OVERLAP FIX ====================
+
+    /**
+     * Yakuniy global overlap fix.
+     *
+     * Buchheim + partner placement + fixSiblingOverlaps'dan keyin ham turli
+     * subtree'lardan nodelar bir xil Y-levelde overlap qilib qolishi mumkin.
+     * (Masalan: bir subtree'ning RIGHT partner'i boshqa subtree'ning LEFT partner'i
+     * bilan)
+     *
+     * Algoritm:
+     * - Har bir level uchun barcha nodelarni x bo'yicha saralamiz
+     * - Ketma-ket juftlarni tekshirib, overlap bo'lsa o'ng nodeni (va uning
+     * BUTUN subtree'sini) o'ngga siljitamiz
+     * - O'zgarish bo'lmaguncha (yoki 5 pass'gacha) takrorlaymiz
+     */
+    private void globalLevelOverlapFix(List<Node> roots, LayoutConfig cfg,
+            Map<String, List<Node>> nodeToPartners) {
+        for (int pass = 0; pass < 5; pass++) {
+            boolean changed = false;
+
+            // Har pass'da yangi levelMap qurish (oldingi pass'da x'lar o'zgargan)
+            Map<Integer, List<Node>> levelMap = new LinkedHashMap<>();
+            Set<String> seen = new HashSet<>();
+            for (Node root : roots)
+                collectByLevel(root, levelMap, seen);
+
+            // Level'larni yuqoridan pastga (kichikdan kattaga) qayta ishlash
+            List<Integer> sortedLevels = new ArrayList<>(levelMap.keySet());
+            Collections.sort(sortedLevels);
+
+            for (int level : sortedLevels) {
+                List<Node> nodes = levelMap.get(level);
+                // x bo'yicha chapdan o'ngga tartibla
+                nodes.sort(Comparator.comparingDouble(n -> n.x));
+
+                for (int i = 0; i + 1 < nodes.size(); i++) {
+                    Node a = nodes.get(i);
+                    Node b = nodes.get(i + 1);
+                    // Faqat Y-oraliqlari kesishsa tekshiramiz
+                    // (vertikal ustundagi partnerlar bir xil leveldа bo'lsa ham
+                    // turli Y pozitsiyada bo'ladi — ular orasida X overlap yo'q)
+                    boolean yOverlaps = (a.y < b.y + b.height) && (b.y < a.y + a.height);
+                    if (!yOverlaps)
+                        continue;
+
+                    double minRequiredX = a.x + a.width + cfg.siblingSeparation;
+                    if (b.x < minRequiredX) {
+                        double shift = minRequiredX - b.x;
+                        // MUHIM: partner (spouse) nodelarni MUSTAQIL siljitmaymiz!
+                        // Partner faqat egasi (main person) bilan birga harakat qilishi kerak.
+                        // Aks holda "Asliddin" Abbosdan juda uzoqqa ketib qoladi.
+                        if (b.isPartner)
+                            continue;
+                        shiftSubtreeX(b, shift);
+                        changed = true;
+                    }
+                }
+            }
+
+            // Hech qanday overlap topilmasa — erta chiqish
+            if (!changed)
+                break;
+        }
+    }
+
+    /**
+     * FINAL SAFETY NET: Barcha nodelarni to'g'ridan-to'g'ri juftlab tekshiradi.
+     * Agar ikkita nodening to'rtburchaklari kesishsa, o'ng/pastki nodeni va uning
+     * spouse ustunini siljitadi. Level farqi muhim emas — butun canvas
+     * tekshiriladi.
+     * Max 5 pass bajariladi.
+     */
+    private void globalAllPairsOverlapFix(List<Node> roots, LayoutConfig cfg,
+            Map<String, List<Node>> nodeToPartners) {
+        for (int pass = 0; pass < 5; pass++) {
+            boolean changed = false;
+
+            // Barcha nodelarni yig'ib olish
+            List<Node> all = new ArrayList<>();
+            Set<String> seen = new HashSet<>();
+            for (Node root : roots)
+                collectAllNodes(root, all, seen);
+
+            // X bo'yicha tartibla (chapdan o'ngga)
+            all.sort(Comparator.comparingDouble(n -> n.x));
+
+            for (int i = 0; i < all.size(); i++) {
+                Node a = all.get(i);
+                for (int j = i + 1; j < all.size(); j++) {
+                    Node b = all.get(j);
+
+                    // b.x > a.x + a.width bo'lsa — keyingi barcha b lar ham overlap qilmaydi
+                    if (b.x >= a.x + a.width + cfg.siblingSeparation)
+                        break;
+
+                    // To'liq to'rtburchak kesishuvini tekshirish
+                    boolean xOverlaps = (a.x < b.x + b.width + cfg.siblingSeparation)
+                            && (b.x < a.x + a.width + cfg.siblingSeparation);
+                    boolean yOverlaps = (a.y < b.y + b.height) && (b.y < a.y + a.height);
+
+                    if (xOverlaps && yOverlaps) {
+                        double shift = (a.x + a.width + cfg.siblingSeparation) - b.x;
+                        if (shift > 0.01) {
+                            // MUHIM: partner (spouse) nodelarni MUSTAQIL siljitmaymiz!
+                            // Partner faqat egasi bilan birga harakat qiladi (fixSiblingOverlaps da).
+                            // Mustaqil siljitish katta bo'shliq (gap) paydo qiladi.
+                            if (b.isPartner)
+                                continue;
+                            shiftSubtreeX(b, shift);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            if (!changed)
+                break;
+        }
+    }
+
+    private void collectAllNodes(Node v, List<Node> list, Set<String> seen) {
+        if (seen.contains(v.id))
+            return;
+        seen.add(v.id);
+        list.add(v);
+        for (Node c : v.children)
+            collectAllNodes(c, list, seen);
+        for (Node c : v.stChildren)
+            collectAllNodes(c, list, seen);
+    }
+
     // ==================== NEIGHBORS ====================
 
     private void setNeighbors(List<Node> roots, int orientation) {
@@ -829,10 +1095,31 @@ public class OrgChartLayoutCalculatorNew {
             nodes.sort(horiz
                     ? Comparator.comparingDouble(n -> n.x)
                     : Comparator.comparingDouble(n -> n.y));
-            for (int i = 0; i < nodes.size(); i++) {
-                Node n = nodes.get(i);
-                n.leftNeighbor = (i > 0) ? nodes.get(i - 1) : null;
-                n.rightNeighbor = (i < nodes.size() - 1) ? nodes.get(i + 1) : null;
+
+            // BUG FIX: Partner (spouse) nodelar va oddiy nodelarni ajratamiz.
+            // Aks holda Robiya (spouse) Quvonch ning rightNeighbor bo'lib,
+            // FamilyTree.js chiziqni Robiya gacha tortib ketadi — xato!
+            // Har bir guruh ichida o'zaro neighbor o'rnatamiz.
+            List<Node> regular = new ArrayList<>();
+            List<Node> partners = new ArrayList<>();
+            for (Node n : nodes) {
+                if (n.isPartner)
+                    partners.add(n);
+                else
+                    regular.add(n);
+            }
+
+            // Oddiy nodelar: faqat o'zaro neighbor
+            for (int i = 0; i < regular.size(); i++) {
+                Node n = regular.get(i);
+                n.leftNeighbor = (i > 0) ? regular.get(i - 1) : null;
+                n.rightNeighbor = (i < regular.size() - 1) ? regular.get(i + 1) : null;
+            }
+            // Partner nodelar: neighbor o'rnatilmaydi (FamilyTree.js partner uchun alohida
+            // link chizadi)
+            for (Node n : partners) {
+                n.leftNeighbor = null;
+                n.rightNeighbor = null;
             }
         }
     }
@@ -887,4 +1174,3 @@ public class OrgChartLayoutCalculatorNew {
         return result;
     }
 }
-

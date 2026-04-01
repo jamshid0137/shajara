@@ -535,7 +535,11 @@
 
                 toolbar: { zoom: true, fit: true, fullScreen: true },
 
-                nodeTreeMenu: true,
+                // nodeTreeMenu: FALSE — bu belgi bosilganda FamilyTree.js o'z layout
+                // algoritmini ishga tushiradi (placeholder nodelar qo'shadi) va
+                // backend joylashuvlarimizni buzadi. Shuning uchun o'chirildi.
+                // Buning o'rniga nodeMenu'dagi "📂 Markaz qilish" ishlatiladi.
+                nodeTreeMenu: false,
 
                 /* ── Node o'ng-klik menyu ── */
                 nodeMenu: {
@@ -576,6 +580,8 @@
 
                 nodes: []
             });
+
+            /* nodeTreeMenu o'chirildi — false qilingan (nodeMenu ishlatiladi) */
 
             /* ── UPDATE va DELETE eventlari ──
                FamilyTree.js yangi API: chart.on('update', fn)

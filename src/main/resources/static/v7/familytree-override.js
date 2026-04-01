@@ -92,12 +92,30 @@
         if (null != n.ln) e.leftNeighbor  = a ? a[n.ln]  : null;
         if (null != n.rn) e.rightNeighbor = a ? a[n.rn] : null;
 
-        // ── ROOT CAUSE FIX: isPartner yo'nalishini faktual pozitsiyaga qarab to'g'irla ──
+        // ── BUS CHIZIQ FIX (frontend himoya) ──────────────────────────────
+        // Muammo: FamilyTree.js bus chiziqni (yuqori gorizontal chiziq) rightNeighbor
+        // gacha tortadi. Agar Robiya (spouse) Quvonch ning rightNeighbor bo'lsa,
+        // chiziq Robiya gacha boradi — xato!
+        //
+        // Yechim 1 (Java): setNeighbors da partner nodelarni ajratdik (server restart kerak).
+        // Yechim 2 (JS): Bu yerda ham partner nodelar uchun neighbor ni tozalaymiz.
+        if (e.isPartner) {
+            // Partner node bo'lsa — left/right neighbor yo'q
+            e.leftNeighbor  = null;
+            e.rightNeighbor = null;
+        } else {
+            // Oddiy node bo'lsa — uning neighbor'i partner bo'lmasin
+            if (e.rightNeighbor && e.rightNeighbor.isPartner) {
+                e.rightNeighbor = null;
+            }
+            if (e.leftNeighbor && e.leftNeighbor.isPartner) {
+                e.leftNeighbor = null;
+            }
+        }
+
+        // ── isPartner yo'nalishini faktual pozitsiyaga qarab to'g'irla ──────
         // Muammo: FamilyTree.js ichida isPartner=2 (left) deb saqlangan bo'lsa-da,
         // biz Java layoutda uni o'NGGA joylashtiramiz (x > parent.x).
-        // Render _linkRightToLeft (isPartner=2) ni chaqiradi va strelka Sanamjon.right + 14
-        // ga tushadi (tashqarida).
-        // Yechim: faktual x pozitsiyaga qarab isPartner ni yangilaymiz.
         if (e.isPartner && e.parent && typeof e.parent.x === 'number') {
             var oldPartner = e.isPartner;
             e.isPartner = (e.x >= e.parent.x) ? 1 : 2;

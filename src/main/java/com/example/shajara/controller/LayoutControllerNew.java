@@ -187,10 +187,11 @@ public class LayoutControllerNew {
                 ni.isMirror = toBool(nodeMap.get("im"));
             }
 
-            // i = isPartner
+            // i = isPartner (1=right, 2=left in Balkan FamilyTree.js)
             if (nodeMap.containsKey("i")) {
-                ni.isPartner = toBool(nodeMap.get("i"));
-                ni.partnerType = toBool(nodeMap.get("i")) ? 1 : 0;
+                int iVal = toInt(nodeMap.get("i"), 0);
+                ni.isPartner = (iVal != 0);
+                ni.partnerType = iVal;  // 1=right, 2=left
             }
 
             // g = hasPartners
