@@ -395,6 +395,43 @@
             text-transform: uppercase;
             letter-spacing: .4px;
         }
+
+        /* CUSTOM TREE MENU POPUP */
+        #customTreeMenuPopup {
+            background: rgba(19, 19, 46, .98);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            min-width: 210px;
+        }
+        #customTreeMenuPopup .cmenu-title {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            margin: 4px 8px 8px;
+            letter-spacing: 0.5px;
+        }
+        #customTreeMenuPopup button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: none;
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        #customTreeMenuPopup button:hover {
+            background: rgba(99, 102, 241, .15);
+            color: #fff;
+        }
     </style>
 </head>
 
@@ -469,6 +506,8 @@
         var _loadedFtNodes = {};
         /* Har bir nodening treeId si (id → treeId) */
         var _nodeTreeIdMap = {};
+        /* GLOBAL spouse xaritasi: id → [spouseId1, spouseId2, ...] (connections dan to'g'ridan-to'g'ri) */
+        var _spouseMapGlobal = {};
 
         /* ────────────────────────────────────────────────────────────
            INIT
@@ -495,6 +534,368 @@
                 return;
             }
 
+            function getTransformXY(el) {
+                const t = el.getAttribute('transform');
+                if (!t) return {x:0, y:0};
+                let m = t.match(/matrix\(([^)]+)\)/);
+                if (m) {
+                    let p = m[1].split(',');
+                    return {x: parseFloat(p[4]), y: parseFloat(p[5])};
+                }
+                m = t.match(/translate\(([^,]+),?\s*([^)]+)?\)/);
+                if (m) {
+                    return {x: parseFloat(m[1]), y: m[2] ? parseFloat(m[2]) : 0};
+                }
+                return {x:0, y:0};
+            }
+
+            // Custom Drawing (Chizma) for Adding Nodes
+            window._openCustomTreeMenu = function(e, id) {
+                e.stopPropagation();
+                
+                var old = document.getElementById('customTreeMenuGroup');
+                if (old) old.remove();
+
+                setTimeout(function() {
+                    document.addEventListener('click', function closeMenu(ev) {
+                        var m = document.getElementById('customTreeMenuGroup');
+                        if (m) m.remove();
+                        document.removeEventListener('click', closeMenu);
+                    });
+                }, 10);
+
+                var nodeObj = _loadedFtNodes[id];
+                var nodeEl = document.querySelector('[data-n-id="' + id + '"]');
+                if (!nodeEl || !nodeObj) return;
+
+                var pos = getTransformXY(nodeEl);
+                var nx = pos.x, ny = pos.y;
+                var nw = 216, nh = 90; // Tommy size
+
+                var ns = "http://www.w3.org/2000/svg";
+                var group = document.createElementNS(ns, "g");
+                group.setAttribute("id", "customTreeMenuGroup");
+
+                function createBtn(text, bx, by, color, actionFn, labelText) {
+                    var g = document.createElementNS(ns, "g");
+                    g.setAttribute("style", "cursor:pointer; pointer-events:all;");
+                    g.addEventListener('click', function(ev) {
+                        ev.stopPropagation();
+                        if (group) group.remove();
+                        actionFn();
+                    });
+
+                    var circle = document.createElementNS(ns, "circle");
+                    circle.setAttribute("cx", bx);
+                    circle.setAttribute("cy", by);
+                    circle.setAttribute("r", "16");
+                    circle.setAttribute("fill", "#1c1c42");
+                    circle.setAttribute("stroke", color);
+                    circle.setAttribute("stroke-width", "2");
+                    g.appendChild(circle);
+
+                    var txt = document.createElementNS(ns, "text");
+                    txt.setAttribute("x", bx);
+                    txt.setAttribute("y", by + 6);
+                    txt.setAttribute("text-anchor", "middle");
+                    txt.setAttribute("font-size", "18");
+                    txt.setAttribute("fill", color);
+                    txt.setAttribute("font-weight", "bold");
+                    txt.setAttribute("font-family", "Arial");
+                    txt.textContent = text;
+                    g.appendChild(txt);
+
+                    if (labelText) {
+                        var lbl = document.createElementNS(ns, "text");
+                        lbl.setAttribute("x", bx);
+                        lbl.setAttribute("y", by + 28);
+                        lbl.setAttribute("text-anchor", "middle");
+                        lbl.setAttribute("font-size", "11");
+                        lbl.setAttribute("fill", "#fff");
+                        lbl.textContent = labelText;
+                        g.appendChild(lbl);
+                    }
+
+                    var hov = document.createElementNS(ns, "circle");
+                    hov.setAttribute("cx", bx);
+                    hov.setAttribute("cy", by);
+                    hov.setAttribute("r", "20");
+                    hov.setAttribute("fill", "transparent");
+                    g.appendChild(hov);
+                    
+                    group.appendChild(g);
+                }
+
+                function drawLine(x1, y1, x2, y2, color) {
+                    var line = document.createElementNS(ns, "line");
+                    line.setAttribute("x1", x1);
+                    line.setAttribute("y1", y1);
+                    line.setAttribute("x2", x2);
+                    line.setAttribute("y2", y2);
+                    line.setAttribute("stroke", color);
+                    line.setAttribute("stroke-width", "2");
+                    line.setAttribute("stroke-dasharray", "4,4");
+                    group.appendChild(line);
+                }
+
+                function createCard(title, bx, by, color, actionFn, subLabel, iconChar) {
+                    var g = document.createElementNS(ns, "g");
+                    g.setAttribute("style", "cursor:pointer; pointer-events:all; transition: opacity 0.2s;");
+                    g.addEventListener('click', function(ev) {
+                        ev.stopPropagation();
+                        if (group) group.remove();
+                        if (actionFn) actionFn();
+                    });
+                    
+                    var w = 216, h = 90;
+
+                    var rect = document.createElementNS(ns, "rect");
+                    rect.setAttribute("x", bx - w/2);
+                    rect.setAttribute("y", by);
+                    rect.setAttribute("width", w);
+                    rect.setAttribute("height", h);
+                    rect.setAttribute("fill", "#1c1c42"); 
+                    rect.setAttribute("stroke", color);
+                    rect.setAttribute("stroke-width", "1");
+                    rect.setAttribute("rx", "5");
+                    g.appendChild(rect);
+
+                    var txt = document.createElementNS(ns, "text");
+                    txt.setAttribute("x", bx + w/2 - 15);
+                    txt.setAttribute("y", by + 25);
+                    txt.setAttribute("text-anchor", "end");
+                    txt.setAttribute("font-size", "14");
+                    txt.setAttribute("fill", color);
+                    txt.setAttribute("font-family", "Arial");
+                    txt.textContent = title;
+                    g.appendChild(txt);
+
+                    var actualIcon = iconChar;
+                    if (!actualIcon) {
+                        actualIcon = (title.indexOf("Qiz") > -1 || title.indexOf("daughter") > -1) ? "👩" : "👨";
+                    }
+
+                    var icon = document.createElementNS(ns, "text");
+                    icon.setAttribute("x", bx - w/2 + 40);
+                    icon.setAttribute("y", by + 55);
+                    icon.setAttribute("text-anchor", "middle");
+                    icon.setAttribute("font-size", "36");
+                    icon.textContent = actualIcon;
+                    g.appendChild(icon);
+
+                    if (subLabel) {
+                        var subTxt = document.createElementNS(ns, "text");
+                        subTxt.setAttribute("x", bx + 10);
+                        subTxt.setAttribute("y", by + 65);
+                        subTxt.setAttribute("text-anchor", "middle");
+                        subTxt.setAttribute("font-size", "12");
+                        subTxt.setAttribute("fill", "#bbb");
+                        subTxt.setAttribute("font-family", "Arial");
+                        subTxt.textContent = "(" + subLabel + ")";
+                        g.appendChild(subTxt);
+                    }
+
+                    group.appendChild(g);
+                }
+
+                var colorSpouse = "#039be5";
+                var colorParent = "#039be5";
+                var colorMale = "#039be5";
+                var colorFemale = "#f57c00";
+
+                // 1. Parent Btn (Top)
+                drawLine(nx + nw/2, ny, nx + nw/2, ny - 40, colorParent);
+                createBtn("+", nx + nw/2, ny - 40, colorParent, function() { addParent(id); }, "Ota-ona");
+
+                // 2. Spouse Left Btn
+                drawLine(nx, ny + nh/2, nx - 40, ny + nh/2, colorSpouse);
+                createBtn("+", nx - 40, ny + nh/2, colorSpouse, function() { addSpouse(id); }, "");
+
+                // 3. Spouse Right Btn
+                drawLine(nx + nw, ny + nh/2, nx + nw + 40, ny + nh/2, colorSpouse);
+                createBtn("+", nx + nw + 40, ny + nh/2, colorSpouse, function() { addSpouse(id); }, "");
+
+                // === 4. Har bir spouse uchun alohida ustun (fixed horizontal spacing) ===
+
+                // spouseId bo'yicha mavjud farzandlarni topish
+                var getExistingChildren = function(spouseId) {
+                    var result = [];
+                    for (var cId in _loadedFtNodes) {
+                        var ch = _loadedFtNodes[cId];
+                        if (String(cId) === String(id)) continue;
+                        var isChild = (String(ch.fid) === String(id) || String(ch.mid) === String(id));
+                        if (!isChild) continue;
+                        var otherP = (String(ch.fid) === String(id)) ? ch.mid : ch.fid;
+                        if (spouseId === null) {
+                            var myPids2 = (nodeObj.pids || []).map(String);
+                            if (!otherP || myPids2.indexOf(String(otherP)) === -1) result.push(ch);
+                        } else {
+                            if (String(otherP) === String(spouseId)) result.push(ch);
+                        }
+                    }
+                    return result;
+                };
+
+                // === GLOBAL spouseMap dan spouse IDlarini olamiz (ENG ISHONCHLI) ===
+                // _spouseMapGlobal mapAndRender da backend CONNECTIONS dan to'ldirilgan
+                var rawSpouseIds = (_spouseMapGlobal[String(id)] || []).slice();
+                console.log('[customMenu] _spouseMapGlobal[' + id + ']:', JSON.stringify(rawSpouseIds));
+
+                var columns = [];
+                if (rawSpouseIds.length > 0) {
+                    for (var sii = 0; sii < rawSpouseIds.length; sii++) {
+                        var spId = String(rawSpouseIds[sii]);
+                        var spNodeObj = _loadedFtNodes[spId];
+                        columns.push({
+                            spouseId: spId,
+                            label: spNodeObj ? (spNodeObj.name || 'Juft') : ('ID:' + spId)
+                        });
+                    }
+                } else {
+                    // Spouse yo'q — bitta ustun (juft ko'rsatmasdan)
+                    columns.push({ spouseId: null, label: '' });
+                }
+                console.log('[customMenu] columns:', columns.length, columns.map(function(c){ return c.label; }));
+
+
+                // Horizontal spacing: card kengligi 216, oraliq 8
+                var CARD_W = 216;
+                var COL_GAP = 8;
+                var COL_STEP = CARD_W + COL_GAP;
+                var totalColsWidth = columns.length * CARD_W + (columns.length - 1) * COL_GAP;
+
+                // Ustunlar pozitsiyasi: main node markaziga nisbatan chapga/o'ngga
+                var firstColLeft = (nx + nw / 2) - totalColsWidth / 2;
+
+                // Barcha ustunlar bir xil Y da boshlanadi
+                var colBaseY = ny + nh + 40;
+
+                // Har bir ustunni chizish (IIFE bilan closure muammosini yopamiz)
+                for (var ci = 0; ci < columns.length; ci++) {
+                    (function(col, colIndex) {
+                        var colLeft = firstColLeft + colIndex * COL_STEP; // rect chap qirrasi
+                        var colMidX = colLeft + CARD_W / 2;               // ustun markazi
+
+                        var curY = colBaseY;
+
+                        // ── Asosiy noddan ushbu ustun tepasiga yo'naltiruvchi chiziq ──
+                        var anchorX = nx + nw / 2;
+                        var anchorY = ny + nh;
+                        var elbowY  = anchorY + 20;
+                        var guidePath = document.createElementNS(ns, "path");
+                        guidePath.setAttribute("d",
+                            "M " + anchorX + " " + anchorY +
+                            " L " + anchorX + " " + elbowY  +
+                            " L " + colMidX  + " " + elbowY  +
+                            " L " + colMidX  + " " + curY
+                        );
+                        guidePath.setAttribute("fill", "none");
+                        guidePath.setAttribute("stroke", "#555");
+                        guidePath.setAttribute("stroke-width", "1.5");
+                        guidePath.setAttribute("stroke-dasharray", "4,3");
+                        group.appendChild(guidePath);
+
+                        // ── Spouse ismi sarlavhasi ──
+                        if (col.spouseId !== null) {
+                            var spTxt = document.createElementNS(ns, "text");
+                            spTxt.setAttribute("x", colMidX);
+                            spTxt.setAttribute("y", curY - 6);
+                            spTxt.setAttribute("text-anchor", "middle");
+                            spTxt.setAttribute("font-size", "11");
+                            spTxt.setAttribute("fill", "#aaa");
+                            spTxt.setAttribute("font-family", "Arial");
+                            var lbl = col.label.length > 18 ? col.label.substring(0, 16) + ".." : col.label;
+                            spTxt.textContent = lbl + " bilan";
+                            group.appendChild(spTxt);
+                        }
+
+                        // ── Add son ──
+                        createCard("Add son", colMidX, curY, colorMale,
+                            (function(sid) {
+                                return function() {
+                                    _pendingChildId = id;
+                                    _pendingChildSpouseId = sid;
+                                    _pendingChildTreeId = _nodeTreeIdMap[id] || Number(getTreeId());
+                                    confirmChild('MALE');
+                                };
+                            })(col.spouseId),
+                            null, "👨");
+                        curY += 90;
+
+                        // connector
+                        var conn1 = document.createElementNS(ns, "line");
+                        conn1.setAttribute("x1", colMidX); conn1.setAttribute("y1", curY);
+                        conn1.setAttribute("x2", colMidX); conn1.setAttribute("y2", curY + 8);
+                        conn1.setAttribute("stroke", "#555"); conn1.setAttribute("stroke-width", "1.5");
+                        group.appendChild(conn1);
+                        curY += 8;
+
+                        // ── Add daughter ──
+                        createCard("Add daughter", colMidX, curY, colorFemale,
+                            (function(sid) {
+                                return function() {
+                                    _pendingChildId = id;
+                                    _pendingChildSpouseId = sid;
+                                    _pendingChildTreeId = _nodeTreeIdMap[id] || Number(getTreeId());
+                                    confirmChild('FEMALE');
+                                };
+                            })(col.spouseId),
+                            null, "👩");
+                        curY += 90;
+
+                        // ── Mavjud farzandlar ──
+                        var kids = getExistingChildren(col.spouseId);
+                        if (kids.length > 0) {
+                            var conn2 = document.createElementNS(ns, "line");
+                            conn2.setAttribute("x1", colMidX); conn2.setAttribute("y1", curY);
+                            conn2.setAttribute("x2", colMidX); conn2.setAttribute("y2", curY + 12);
+                            conn2.setAttribute("stroke", "#555"); conn2.setAttribute("stroke-width", "1.5");
+                            group.appendChild(conn2);
+                            curY += 12;
+
+                            var kidLbl = document.createElementNS(ns, "text");
+                            kidLbl.setAttribute("x", colMidX);
+                            kidLbl.setAttribute("y", curY + 5);
+                            kidLbl.setAttribute("text-anchor", "middle");
+                            kidLbl.setAttribute("font-size", "10");
+                            kidLbl.setAttribute("fill", "#888");
+                            kidLbl.setAttribute("font-family", "Arial");
+                            kidLbl.textContent = "Mavjud (" + kids.length + ")";
+                            group.appendChild(kidLbl);
+                            curY += 18;
+
+                            for (var ki = 0; ki < kids.length; ki++) {
+                                (function(kid) {
+                                    var conn3 = document.createElementNS(ns, "line");
+                                    conn3.setAttribute("x1", colMidX); conn3.setAttribute("y1", curY);
+                                    conn3.setAttribute("x2", colMidX); conn3.setAttribute("y2", curY + 8);
+                                    conn3.setAttribute("stroke", "#555"); conn3.setAttribute("stroke-width", "1.5");
+                                    group.appendChild(conn3);
+                                    curY += 8;
+
+                                    var isFem = kid.tags && kid.tags.indexOf('female') !== -1;
+                                    var kTitle = (kid.name || '—').substring(0, 18);
+                                    createCard(kTitle, colMidX, curY,
+                                        isFem ? colorFemale : colorMale,
+                                        function() { chart.center(kid.id); },
+                                        kid.years || '', isFem ? "👧" : "👦");
+                                    curY += 90;
+                                })(kids[ki]);
+                            }
+                        }
+                    })(columns[ci], ci);
+                }
+
+
+
+
+                nodeEl.parentNode.appendChild(group);
+            };
+
+            // Inject custom SVG Node Button to 'tommy' template (w=216)
+            FamilyTree.templates.tommy.customTreeMenuBtn = 
+                '<g style="cursor:pointer;" onclick="window._openCustomTreeMenu(event, \'{id}\')"><circle cx="216" cy="12" r="14" fill="#039be5" /><circle cx="223" cy="19" r="6" fill="#fff" /><path d="M220 18.25h6v1.5h-6z" fill="#039be5" /><path d="M222.25 16v6h1.5v-6z" fill="#039be5" /><path d="M216 4a4 4 0 100 8 4 4 0 000-8zm-6 13c0-2.5 3.5-4 6-4s6 1.5 6 4v1h-12z" fill="#fff" /></g>';
+
             /* global handler — nodeMenu onclick uchun */
             window._showRelClick = function (e, nodeId) {
                 e.stopPropagation();
@@ -513,7 +914,8 @@
                     field_0: 'name',
                     field_1: 'roleLabel',
                     field_2: 'years',
-                    img_0: 'photoUrl'
+                    img_0: 'photoUrl',
+                    customTreeMenuBtn: 'alwaysShow'
                 },
 
                 editForm: {
@@ -771,8 +1173,16 @@
                             if (!spouseMap[c.toId]) spouseMap[c.toId] = [];
                             if (spouseMap[c.fromId].indexOf(c.toId) < 0) spouseMap[c.fromId].push(c.toId);
                             if (spouseMap[c.toId].indexOf(c.fromId) < 0) spouseMap[c.toId].push(c.fromId);
+                            // ── GLOBAL xaritaga ham qo'shamiz (merge) ──
+                            var rFrom = String(c.fromId);
+                            var rTo   = String(c.toId);
+                            if (!_spouseMapGlobal[rFrom]) _spouseMapGlobal[rFrom] = [];
+                            if (!_spouseMapGlobal[rTo])   _spouseMapGlobal[rTo]   = [];
+                            if (_spouseMapGlobal[rFrom].indexOf(rTo) < 0) _spouseMapGlobal[rFrom].push(rTo);
+                            if (_spouseMapGlobal[rTo].indexOf(rFrom) < 0) _spouseMapGlobal[rTo].push(rFrom);
                         }
                     });
+
 
                     var roleLbls = {
                         CENTER: '⭐ Asosiy', FATHER: '👨 Ota', MOTHER: '👩 Ona',
@@ -935,15 +1345,27 @@
                 genderMap[n.id] = (n.gender || 'MALE').toUpperCase();
             });
 
+            // ── GLOBAL spouse xaritasini tozalaymiz (yangi load uchun) ──
+            _spouseMapGlobal = {};
+
             connections.forEach(function (c) {
                 var t = (c.type || '').toUpperCase();
                 if (t === 'SPOUSE') {
+                    // local spouseMap (numeric keys, used for FT node building)
                     if (!spouseMap[c.fromId]) spouseMap[c.fromId] = [];
                     if (!spouseMap[c.toId]) spouseMap[c.toId] = [];
                     if (spouseMap[c.fromId].indexOf(c.toId) < 0) spouseMap[c.fromId].push(c.toId);
                     if (spouseMap[c.toId].indexOf(c.fromId) < 0) spouseMap[c.toId].push(c.fromId);
+                    // GLOBAL xarita: KEY va VALUE ikkalasi ham String — type mismatch oldini olamiz
+                    var gFrom = String(c.fromId);
+                    var gTo   = String(c.toId);
+                    if (!_spouseMapGlobal[gFrom]) _spouseMapGlobal[gFrom] = [];
+                    if (!_spouseMapGlobal[gTo])   _spouseMapGlobal[gTo]   = [];
+                    if (_spouseMapGlobal[gFrom].indexOf(gTo) < 0) _spouseMapGlobal[gFrom].push(gTo);
+                    if (_spouseMapGlobal[gTo].indexOf(gFrom) < 0) _spouseMapGlobal[gTo].push(gFrom);
                 }
             });
+            console.log('[mapAndRender] _spouseMapGlobal filled:', JSON.stringify(_spouseMapGlobal));
 
             /* ── 2. Role label ── */
             var roleLbls = {
@@ -985,7 +1407,9 @@
                     birthDate: n.birthDate ? String(n.birthDate) : '',
                     diedDate: n.diedDate ? String(n.diedDate) : '',
                     photoUrl: n.photoUrl || null,
-                    tags: [genderMap[n.id] === 'FEMALE' ? 'female' : 'male']
+                    tags: [genderMap[n.id] === 'FEMALE' ? 'female' : 'male'],
+                    // Button fields mapping
+                    alwaysShow: "1"
                 };
             });
 

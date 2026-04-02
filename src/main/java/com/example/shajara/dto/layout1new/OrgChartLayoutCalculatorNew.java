@@ -236,6 +236,24 @@ public class OrgChartLayoutCalculatorNew {
                             }
                         } catch (Exception ignored) {
                         }
+                    } else {
+                        // MAVJUD (Haqiqiy) FARZANDLARNI HAM MOS SPOUSE TAGIGA JOYLASHTIRISH
+                        for (Node partner : extractedPartners) {
+                            if (partner.stChildren.contains(c)) {
+                                // "Add child" (qo'shadigan) tugunini partnerning ichidan qidiramiz
+                                Node attachNode = partner;
+                                for (Node pc : partner.children) {
+                                    if (pc.id != null && pc.id.startsWith("_ft_child_group_")) {
+                                        attachNode = pc;
+                                        break;
+                                    }
+                                }
+                                attachNode.children.add(c);
+                                c.parent = attachNode;
+                                it.remove();
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -291,6 +309,18 @@ public class OrgChartLayoutCalculatorNew {
                     rightPartners.add(partner);
             }
 
+            // LEVEL MAX_X/MIN_X xaritasi (bolalar va add son/daughter lar ustma-ust tushmasligi uchun)
+            Map<Integer, Double> partnerLevelMaxXMap = new HashMap<>();
+            Map<Integer, Double> partnerLevelMinXMap = new HashMap<>();
+
+            // Asosiy odamning (parentning) o'z non-partner qismini band qilingan deb belgilash
+            for (Node c : parentNode.children) {
+                if (!c.isPartner) {
+                    populateMaxXMap(c, partnerLevelMaxXMap);
+                    populateMinXMap(c, partnerLevelMinXMap);
+                }
+            }
+
             // -- LEFT: parent.y dan boshlab pastga, chap tomonda ---------------
             if (!leftPartners.isEmpty()) {
                 double maxW = leftPartners.stream().mapToDouble(p -> p.width).max().orElse(0);
@@ -302,7 +332,26 @@ public class OrgChartLayoutCalculatorNew {
                     partner.level = parentNode.level;
                     curY += partner.height + vGap;
                     parentNode.children.add(partner);
+                    
                     layoutPartnerSubtree(partner, cfg, levelMaxH, layoutConfigs);
+                    
+                    // Agar partner farzandlari (yoki qaramlari) bo'lsa, xaritadagi chap chegara bo'yicha chapga suramiz
+                     double requiredShift = 0;
+                     for (Node c : partner.children) {
+                         if (!c.isPartner) {
+                             double shift = checkMinXOverlap(c, partnerLevelMinXMap, cfg.siblingSeparation);
+                             if (shift < requiredShift) requiredShift = shift; // manfiy siljish
+                         }
+                     }
+                     if (requiredShift < 0) {
+                         for (Node c : partner.children) {
+                             if (!c.isPartner) shiftSubtreeX(c, requiredShift);
+                         }
+                     }
+                     // Xaritani yangilaymiz
+                     for (Node c : partner.children) {
+                         if (!c.isPartner) populateMinXMap(c, partnerLevelMinXMap);
+                     }
                 }
             }
 
@@ -316,7 +365,26 @@ public class OrgChartLayoutCalculatorNew {
                     partner.level = parentNode.level;
                     curY += partner.height + vGap;
                     parentNode.children.add(partner);
+                    
                     layoutPartnerSubtree(partner, cfg, levelMaxH, layoutConfigs);
+                    
+                    // Agar partner farzandlari (yoki qaramlari) bo'lsa, xaritadagi o'ng chegara bo'yicha o'ngga suramiz
+                    double requiredShift = 0;
+                    for (Node c : partner.children) {
+                        if (!c.isPartner) {
+                            double shift = checkMaxXOverlap(c, partnerLevelMaxXMap, cfg.siblingSeparation);
+                            if (shift > requiredShift) requiredShift = shift; // musbat siljish
+                        }
+                    }
+                    if (requiredShift > 0) {
+                        for (Node c : partner.children) {
+                            if (!c.isPartner) shiftSubtreeX(c, requiredShift);
+                        }
+                    }
+                    // Xaritani yangilaymiz
+                    for (Node c : partner.children) {
+                        if (!c.isPartner) populateMaxXMap(c, partnerLevelMaxXMap);
+                    }
                 }
             }
         }
@@ -583,6 +651,57 @@ public class OrgChartLayoutCalculatorNew {
         for (Node p : nodeToPartners.getOrDefault(node.id, Collections.emptyList()))
             min = Math.min(min, subtreeMinX(p));
         return min;
+    }
+
+    // ==================== MAX X, MIN X MAP HELPERS ====================
+    private void populateMaxXMap(Node n, Map<Integer, Double> map) {
+        double right = n.x + n.width;
+        if (!map.containsKey(n.level) || right > map.get(n.level)) {
+            map.put(n.level, right);
+        }
+        for (Node c : n.children) populateMaxXMap(c, map);
+        for (Node c : n.stChildren) if (c.parent == null) populateMaxXMap(c, map);
+    }
+    
+    private void populateMinXMap(Node n, Map<Integer, Double> map) {
+        double left = n.x;
+        if (!map.containsKey(n.level) || left < map.get(n.level)) {
+            map.put(n.level, left);
+        }
+        for (Node c : n.children) populateMinXMap(c, map);
+        for (Node c : n.stChildren) if (c.parent == null) populateMinXMap(c, map);
+    }
+    
+    private double checkMaxXOverlap(Node n, Map<Integer, Double> map, double sep) {
+        double shift = 0;
+        if (map.containsKey(n.level)) {
+            double safeX = map.get(n.level) + sep;
+            if (n.x < safeX) {
+                double diff = safeX - n.x;
+                if (diff > shift) shift = diff;
+            }
+        }
+        for (Node c : n.children) {
+            double cShift = checkMaxXOverlap(c, map, sep);
+            if (cShift > shift) shift = cShift;
+        }
+        return shift;
+    }
+    
+    private double checkMinXOverlap(Node n, Map<Integer, Double> map, double sep) {
+        double shift = 0; // Manfiy qaytish kerak
+        if (map.containsKey(n.level)) {
+            double safeX = map.get(n.level) - sep - n.width;
+            if (n.x > safeX) {
+                double diff = safeX - n.x; // manfiy son
+                if (diff < shift) shift = diff;
+            }
+        }
+        for (Node c : n.children) {
+            double cShift = checkMinXOverlap(c, map, sep);
+            if (cShift < shift) shift = cShift;
+        }
+        return shift;
     }
 
     // ==================== LEVEL Y SYNC ====================
