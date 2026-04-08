@@ -301,7 +301,7 @@ public class OrgChartLayoutCalculatorNew {
 
             List<Node> rightPartners = new ArrayList<>();
             List<Node> leftPartners = new ArrayList<>();
-            
+
             boolean inAddMode = false;
             for (Node p : e.getValue()) {
                 for (Node pc : p.children) {
@@ -310,14 +310,15 @@ public class OrgChartLayoutCalculatorNew {
                         break;
                     }
                 }
-                if (inAddMode) break;
+                if (inAddMode)
+                    break;
             }
 
             if (inAddMode) {
                 // Add Mode: AddPartner (phantom) -> LEFT, other spouses -> RIGHT
                 for (Node partner : e.getValue()) {
-                    boolean isPhantom = partner.id != null && 
-                        (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
+                    boolean isPhantom = partner.id != null &&
+                            (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
                     if (isPhantom)
                         leftPartners.add(partner);
                     else
@@ -333,11 +334,13 @@ public class OrgChartLayoutCalculatorNew {
                 }
             }
 
-            // LEVEL MAX_X/MIN_X xaritasi (bolalar va add son/daughter lar ustma-ust tushmasligi uchun)
+            // LEVEL MAX_X/MIN_X xaritasi (bolalar va add son/daughter lar ustma-ust
+            // tushmasligi uchun)
             Map<Integer, Double> partnerLevelMaxXMap = new HashMap<>();
             Map<Integer, Double> partnerLevelMinXMap = new HashMap<>();
 
-            // Asosiy odamning (parentning) o'z non-partner qismini band qilingan deb belgilash
+            // Asosiy odamning (parentning) o'z non-partner qismini band qilingan deb
+            // belgilash
             for (Node c : parentNode.children) {
                 if (!c.isPartner) {
                     populateMaxXMap(c, partnerLevelMaxXMap);
@@ -356,26 +359,30 @@ public class OrgChartLayoutCalculatorNew {
                     partner.level = parentNode.level;
                     curY += partner.height + vGap;
                     parentNode.children.add(partner);
-                    
+
                     layoutPartnerSubtree(partner, cfg, levelMaxH, layoutConfigs);
-                    
-                    // Agar partner farzandlari (yoki qaramlari) bo'lsa, xaritadagi chap chegara bo'yicha chapga suramiz
-                     double requiredShift = 0;
-                     for (Node c : partner.children) {
-                         if (!c.isPartner) {
-                             double shift = checkMinXOverlap(c, partnerLevelMinXMap, cfg.siblingSeparation * 2);
-                             if (shift < requiredShift) requiredShift = shift; // manfiy siljish
-                         }
-                     }
-                     if (requiredShift < 0) {
-                         for (Node c : partner.children) {
-                             if (!c.isPartner) shiftSubtreeX(c, requiredShift);
-                         }
-                     }
-                     // Xaritani yangilaymiz
-                     for (Node c : partner.children) {
-                         if (!c.isPartner) populateMinXMap(c, partnerLevelMinXMap);
-                     }
+
+                    // Agar partner farzandlari (yoki qaramlari) bo'lsa, xaritadagi chap chegara
+                    // bo'yicha chapga suramiz
+                    double requiredShift = 0;
+                    for (Node c : partner.children) {
+                        if (!c.isPartner) {
+                            double shift = checkMinXOverlap(c, partnerLevelMinXMap, cfg.siblingSeparation * 2);
+                            if (shift < requiredShift)
+                                requiredShift = shift; // manfiy siljish
+                        }
+                    }
+                    if (requiredShift < 0) {
+                        for (Node c : partner.children) {
+                            if (!c.isPartner)
+                                shiftSubtreeX(c, requiredShift);
+                        }
+                    }
+                    // Xaritani yangilaymiz
+                    for (Node c : partner.children) {
+                        if (!c.isPartner)
+                            populateMinXMap(c, partnerLevelMinXMap);
+                    }
                 }
             }
 
@@ -389,25 +396,29 @@ public class OrgChartLayoutCalculatorNew {
                     partner.level = parentNode.level;
                     curY += partner.height + vGap;
                     parentNode.children.add(partner);
-                    
+
                     layoutPartnerSubtree(partner, cfg, levelMaxH, layoutConfigs);
-                    
-                    // Agar partner farzandlari (yoki qaramlari) bo'lsa, xaritadagi o'ng chegara bo'yicha o'ngga suramiz
+
+                    // Agar partner farzandlari (yoki qaramlari) bo'lsa, xaritadagi o'ng chegara
+                    // bo'yicha o'ngga suramiz
                     double requiredShift = 0;
                     for (Node c : partner.children) {
                         if (!c.isPartner) {
                             double shift = checkMaxXOverlap(c, partnerLevelMaxXMap, cfg.siblingSeparation * 2);
-                            if (shift > requiredShift) requiredShift = shift; // musbat siljish
+                            if (shift > requiredShift)
+                                requiredShift = shift; // musbat siljish
                         }
                     }
                     if (requiredShift > 0) {
                         for (Node c : partner.children) {
-                            if (!c.isPartner) shiftSubtreeX(c, requiredShift);
+                            if (!c.isPartner)
+                                shiftSubtreeX(c, requiredShift);
                         }
                     }
                     // Xaritani yangilaymiz
                     for (Node c : partner.children) {
-                        if (!c.isPartner) populateMaxXMap(c, partnerLevelMaxXMap);
+                        if (!c.isPartner)
+                            populateMaxXMap(c, partnerLevelMaxXMap);
                     }
                 }
             }
@@ -481,14 +492,15 @@ public class OrgChartLayoutCalculatorNew {
                         break;
                     }
                 }
-                if (inAddMode) break;
+                if (inAddMode)
+                    break;
             }
 
             if (inAddMode) {
                 // Add Mode: AddPartner (phantom) -> LEFT, other spouses -> RIGHT
                 for (Node partner : e.getValue()) {
-                    boolean isPhantom = partner.id != null && 
-                        (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
+                    boolean isPhantom = partner.id != null &&
+                            (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
                     if (isPhantom)
                         leftPartners.add(partner);
                     else
@@ -534,7 +546,7 @@ public class OrgChartLayoutCalculatorNew {
         // Muammo: bir odamning ko'p juftlari bo'lsa, uning bolalari pastroqqa tushadi.
         // Lekin o'sha qatlamdagi boshqa odamlarning bolalari yuqorida qoladi.
         // Yechim: har bir level uchun eng katta (eng past) Y ni topib,
-        //         shu qatlamdagi BARCHA nodelarni shu Y ga sinxronlashtirish.
+        // shu qatlamdagi BARCHA nodelarni shu Y ga sinxronlashtirish.
         synchronizeLevelY(roots, cfg, nodeMap, partnersByParent, hGap, vGap);
 
         setNeighbors(new ArrayList<>(roots), cfg.orientation);
@@ -708,47 +720,57 @@ public class OrgChartLayoutCalculatorNew {
         if (!map.containsKey(n.level) || right > map.get(n.level)) {
             map.put(n.level, right);
         }
-        for (Node c : n.children) populateMaxXMap(c, map);
-        for (Node c : n.stChildren) if (c.parent == null) populateMaxXMap(c, map);
+        for (Node c : n.children)
+            populateMaxXMap(c, map);
+        for (Node c : n.stChildren)
+            if (c.parent == null)
+                populateMaxXMap(c, map);
     }
-    
+
     private void populateMinXMap(Node n, Map<Integer, Double> map) {
         double left = n.x;
         if (!map.containsKey(n.level) || left < map.get(n.level)) {
             map.put(n.level, left);
         }
-        for (Node c : n.children) populateMinXMap(c, map);
-        for (Node c : n.stChildren) if (c.parent == null) populateMinXMap(c, map);
+        for (Node c : n.children)
+            populateMinXMap(c, map);
+        for (Node c : n.stChildren)
+            if (c.parent == null)
+                populateMinXMap(c, map);
     }
-    
+
     private double checkMaxXOverlap(Node n, Map<Integer, Double> map, double sep) {
         double shift = 0;
         if (map.containsKey(n.level)) {
             double safeX = map.get(n.level) + sep;
             if (n.x < safeX) {
                 double diff = safeX - n.x;
-                if (diff > shift) shift = diff;
+                if (diff > shift)
+                    shift = diff;
             }
         }
         for (Node c : n.children) {
             double cShift = checkMaxXOverlap(c, map, sep);
-            if (cShift > shift) shift = cShift;
+            if (cShift > shift)
+                shift = cShift;
         }
         return shift;
     }
-    
+
     private double checkMinXOverlap(Node n, Map<Integer, Double> map, double sep) {
         double shift = 0; // Manfiy qaytish kerak
         if (map.containsKey(n.level)) {
             double safeX = map.get(n.level) - sep - n.width;
             if (n.x > safeX) {
                 double diff = safeX - n.x; // manfiy son
-                if (diff < shift) shift = diff;
+                if (diff < shift)
+                    shift = diff;
             }
         }
         for (Node c : n.children) {
             double cShift = checkMinXOverlap(c, map, sep);
-            if (cShift < shift) shift = cShift;
+            if (cShift < shift)
+                shift = cShift;
         }
         return shift;
     }
@@ -766,7 +788,8 @@ public class OrgChartLayoutCalculatorNew {
      * 1. Barcha non-partner nodelarni level bo'yicha guruhlash
      * 2. Har bir level uchun maxY ni topish (eng past joylashgan node)
      * 3. Shu levelda Y < maxY bo'lgan nodelarni (va subtreeni) pastga siljitish
-     * 4. Partner pozitsiyalarini qayta tiklash (ular parent bilan birga turishi kerak)
+     * 4. Partner pozitsiyalarini qayta tiklash (ular parent bilan birga turishi
+     * kerak)
      */
     private void synchronizeLevelY(
             List<Node> roots,
@@ -787,14 +810,16 @@ public class OrgChartLayoutCalculatorNew {
 
         for (int level : sortedLevels) {
             List<Node> nodes = levelMap.get(level);
-            if (nodes == null || nodes.isEmpty()) continue;
+            if (nodes == null || nodes.isEmpty())
+                continue;
 
             // Shu qatlamdagi eng katta Y (eng pastdagi node)
             double maxY = nodes.stream().mapToDouble(n -> n.y).max().orElse(0);
 
             // Agar hammasi bir xil Y da bo'lsa -- skip
             boolean allSame = nodes.stream().allMatch(n -> Math.abs(n.y - maxY) < 1.0);
-            if (allSame) continue;
+            if (allSame)
+                continue;
 
             // Y < maxY bo'lgan nodelarni va ularning subtreelerini pastga siljitamiz
             for (Node n : nodes) {
@@ -806,10 +831,11 @@ public class OrgChartLayoutCalculatorNew {
 
         // 3. Partner pozitsiyalarini qayta tiklash
         // (subtree shift partner nodelarni ham siljitgan bo'lishi mumkin,
-        //  lekin partner ota bilan bir xil Y da turishi kerak)
+        // lekin partner ota bilan bir xil Y da turishi kerak)
         for (Map.Entry<String, List<Node>> e : partnersByParent.entrySet()) {
             Node parentNode = nodeMap.get(e.getKey());
-            if (parentNode == null) continue;
+            if (parentNode == null)
+                continue;
 
             List<Node> rightPartners = new ArrayList<>();
             List<Node> leftPartners = new ArrayList<>();
@@ -822,14 +848,15 @@ public class OrgChartLayoutCalculatorNew {
                         break;
                     }
                 }
-                if (inAddMode) break;
+                if (inAddMode)
+                    break;
             }
 
             if (inAddMode) {
                 // Add Mode: AddPartner (phantom) -> LEFT, other spouses -> RIGHT
                 for (Node partner : e.getValue()) {
-                    boolean isPhantom = partner.id != null && 
-                        (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
+                    boolean isPhantom = partner.id != null &&
+                            (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
                     if (isPhantom)
                         leftPartners.add(partner);
                     else
@@ -875,10 +902,12 @@ public class OrgChartLayoutCalculatorNew {
     /**
      * Non-partner nodelarni level bo'yicha yig'adi.
      * Partner nodelar sinxronizatsiyadan chiqariladi chunki
-     * ular parent bilan bir Y da turishi kerak (parent Y o'zgarsa, ular ham o'zgaradi).
+     * ular parent bilan bir Y da turishi kerak (parent Y o'zgarsa, ular ham
+     * o'zgaradi).
      */
     private void collectNonPartnerByLevel(Node v, Map<Integer, List<Node>> map, Set<String> seen) {
-        if (seen.contains(v.id)) return;
+        if (seen.contains(v.id))
+            return;
         seen.add(v.id);
 
         // Faqat non-partner nodelarni qo'shamiz
@@ -1392,11 +1421,12 @@ public class OrgChartLayoutCalculatorNew {
         boolean changed = false;
         for (Map.Entry<String, List<Node>> e : nodeToPartners.entrySet()) {
             List<Node> partners = e.getValue();
-            if (partners.size() <= 1) continue;
+            if (partners.size() <= 1)
+                continue;
 
             List<Node> rightPartners = new ArrayList<>();
             List<Node> leftPartners = new ArrayList<>();
-            
+
             boolean inAddMode = false;
             for (Node p : partners) {
                 for (Node pc : p.children) {
@@ -1405,13 +1435,14 @@ public class OrgChartLayoutCalculatorNew {
                         break;
                     }
                 }
-                if (inAddMode) break;
+                if (inAddMode)
+                    break;
             }
 
             if (inAddMode) {
                 for (Node partner : partners) {
-                    boolean isPhantom = partner.id != null && 
-                        (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
+                    boolean isPhantom = partner.id != null &&
+                            (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
                     if (isPhantom)
                         leftPartners.add(partner);
                     else
@@ -1426,7 +1457,8 @@ public class OrgChartLayoutCalculatorNew {
                 }
             }
 
-            // Right Partners: top spouse children leftmost -> bottom spouse children rightmost
+            // Right Partners: top spouse children leftmost -> bottom spouse children
+            // rightmost
             for (int i = 1; i < rightPartners.size(); i++) {
                 Node prev = rightPartners.get(i - 1);
                 Node curr = rightPartners.get(i);
@@ -1439,14 +1471,16 @@ public class OrgChartLayoutCalculatorNew {
                     if (currMinX < requiredMinX - 0.01) {
                         double shift = requiredMinX - currMinX;
                         for (Node c : curr.children) {
-                            if (!c.isPartner) shiftSubtreeX(c, shift);
+                            if (!c.isPartner)
+                                shiftSubtreeX(c, shift);
                         }
                         changed = true;
                     }
                 }
             }
 
-            // Left Partners: top spouse children rightmost -> bottom spouse children leftmost
+            // Left Partners: top spouse children rightmost -> bottom spouse children
+            // leftmost
             for (int i = 1; i < leftPartners.size(); i++) {
                 Node prev = leftPartners.get(i - 1);
                 Node curr = leftPartners.get(i);
@@ -1459,7 +1493,8 @@ public class OrgChartLayoutCalculatorNew {
                     if (currMaxX > requiredMaxX + 0.01) {
                         double shift = requiredMaxX - currMaxX; // Manfiy qiymat (chapga surish)
                         for (Node c : curr.children) {
-                            if (!c.isPartner) shiftSubtreeX(c, shift);
+                            if (!c.isPartner)
+                                shiftSubtreeX(c, shift);
                         }
                         changed = true;
                     }
@@ -1472,7 +1507,8 @@ public class OrgChartLayoutCalculatorNew {
     private double getChildrenSubtreeMaxX(Node p) {
         double max = Double.NEGATIVE_INFINITY;
         for (Node c : p.children) {
-            if (!c.isPartner) max = Math.max(max, subtreeMaxX(c));
+            if (!c.isPartner)
+                max = Math.max(max, subtreeMaxX(c));
         }
         return max;
     }
@@ -1480,7 +1516,8 @@ public class OrgChartLayoutCalculatorNew {
     private double getChildrenSubtreeMinX(Node p) {
         double min = Double.POSITIVE_INFINITY;
         for (Node c : p.children) {
-            if (!c.isPartner) min = Math.min(min, subtreeMinX(c));
+            if (!c.isPartner)
+                min = Math.min(min, subtreeMinX(c));
         }
         return min;
     }
@@ -1504,9 +1541,9 @@ public class OrgChartLayoutCalculatorNew {
      * Bu chiziqlarni bolalar ustidan o'tib ketishini oldini oladi.
      *
      * Oldingi koordinata-bazali yondashuv muammosi:
-     *   - Partner (spouse) va child bir xil Y ga ega bo'lsa,
-     *     ular turli darajada bo'lsa ham bir guruhga tushib,
-     *     noto'g'ri qo'shnilik o'rnatilardi va chiziq bolalar ustidan o'tardi.
+     * - Partner (spouse) va child bir xil Y ga ega bo'lsa,
+     * ular turli darajada bo'lsa ham bir guruhga tushib,
+     * noto'g'ri qo'shnilik o'rnatilardi va chiziq bolalar ustidan o'tardi.
      */
     private void setNeighbors(List<Node> roots, int orientation) {
         boolean horiz = (orientation == ORIENTATION_TOP || orientation == ORIENTATION_BOTTOM);
@@ -1552,10 +1589,10 @@ public class OrgChartLayoutCalculatorNew {
         if (seen.contains(v.id))
             return;
         seen.add(v.id);
-        
+
         long key = Math.round(horiz ? v.y : v.x);
         map.computeIfAbsent(key, k -> new ArrayList<>()).add(v);
-        
+
         for (Node c : v.children)
             collectByCoordinate(c, map, seen, horiz);
         for (Node c : v.stChildren)

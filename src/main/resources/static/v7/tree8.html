@@ -404,9 +404,10 @@
             border-radius: 12px;
             padding: 8px;
             z-index: 1000;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
             min-width: 210px;
         }
+
         #customTreeMenuPopup .cmenu-title {
             font-size: 11px;
             color: var(--muted);
@@ -414,6 +415,7 @@
             margin: 4px 8px 8px;
             letter-spacing: 0.5px;
         }
+
         #customTreeMenuPopup button {
             display: block;
             width: 100%;
@@ -428,6 +430,7 @@
             transition: 0.2s;
             font-family: inherit;
         }
+
         #customTreeMenuPopup button:hover {
             background: rgba(99, 102, 241, .15);
             color: #fff;
@@ -542,38 +545,64 @@
             if (!container || container._proximityBound) return;
             container._proximityBound = true;
 
-            var PROXIMITY_PX = 6;    /* sichqonchen chiziqqa maksimal masofa (px) */
-            var STEPS        = 40;   /* har bir path bo'ylab qancha nuqta tekshiriladi */
-            var highlighted  = [];   /* hozir yashil bo'lgan path lar */
-            var rafId        = null; /* requestAnimationFrame ID */
+            var PROXIMITY_PX = 6;   /* sichqondan chiziqqa maksimal masofa (px) */
+            var highlighted = [];   /* hozir yashil bo'lgan elementlar */
+            var rafId = null;
+
+            /* Nuqtadan segment (x1,y1)→(x2,y2) gacha bo'lgan masofa */
+            function distToSegment(mx, my, x1, y1, x2, y2) {
+                var dx = x2 - x1, dy = y2 - y1;
+                var lenSq = dx * dx + dy * dy;
+                if (lenSq === 0) return Math.sqrt((mx - x1) * (mx - x1) + (my - y1) * (my - y1));
+                var t = Math.max(0, Math.min(1, ((mx - x1) * dx + (my - y1) * dy) / lenSq));
+                var px = x1 + t * dx, py = y1 + t * dy;
+                return Math.sqrt((mx - px) * (mx - px) + (my - py) * (my - py));
+            }
+
+            /* Element connector chiziqmi? (node background emas) */
+            function isConnectorPath(el) {
+                /* fill atributini va computed style ni tekshir */
+                var fillAttr = el.getAttribute('fill');
+                if (fillAttr === 'none') return true;
+                /* CSS orqali fill:none qilingan bo'lsa */
+                try {
+                    var cs = window.getComputedStyle(el);
+                    var cf = cs.fill;
+                    if (cf === 'none' || cf === 'rgba(0, 0, 0, 0)' || cf === 'transparent') return true;
+                } catch (e) { /* ignore */ }
+                return false;
+            }
 
             function checkProximity(mx, my) {
                 var svg = container.querySelector('svg');
                 if (!svg) return;
 
-                /* Faqat bog'lovchi chiziqlar: fill="none" yoki stroke bo'lgan path lar */
-                var paths = svg.querySelectorAll('path[fill="none"]');
                 var newHL = [];
 
+                /* ── 1. PATH elementlar ── */
+                var paths = svg.querySelectorAll('path');
                 for (var pi = 0; pi < paths.length; pi++) {
                     var path = paths[pi];
+                    if (!isConnectorPath(path)) continue;
+
                     var len = 0;
-                    try { len = path.getTotalLength(); } catch(e) { continue; }
+                    try { len = path.getTotalLength(); } catch (e) { continue; }
                     if (len <= 0) continue;
 
                     var ctm;
-                    try { ctm = path.getScreenCTM(); } catch(e) { continue; }
+                    try { ctm = path.getScreenCTM(); } catch (e) { continue; }
                     if (!ctm) continue;
 
-                    var steps = Math.min(STEPS, Math.max(5, Math.floor(len / 8)));
+                    /* Sampling: har 4px da bir nuqta → miss qilmaydi */
+                    var steps = Math.max(8, Math.ceil(len / 4));
                     var minDist = Infinity;
 
                     for (var s = 0; s <= steps; s++) {
-                        var local  = path.getPointAtLength((s / steps) * len);
+                        var local = path.getPointAtLength((s / steps) * len);
                         var screen = local.matrixTransform(ctm);
                         var dx = screen.x - mx;
                         var dy = screen.y - my;
-                        var d  = Math.sqrt(dx * dx + dy * dy);
+                        var d = Math.sqrt(dx * dx + dy * dy);
                         if (d < minDist) minDist = d;
                         if (minDist < PROXIMITY_PX) break; /* erta chiqish */
                     }
@@ -581,39 +610,66 @@
                     if (minDist < PROXIMITY_PX) newHL.push(path);
                 }
 
+                /* ── 2. LINE elementlar ── */
+                var lines = svg.querySelectorAll('line');
+                for (var li = 0; li < lines.length; li++) {
+                    var line = lines[li];
+                    var ctmL;
+                    try { ctmL = line.getScreenCTM(); } catch (e) { continue; }
+                    if (!ctmL) continue;
+
+                    /* Line ning uchlarini screen koordinatiga o'tkazamiz */
+                    var lx1 = parseFloat(line.getAttribute('x1') || 0);
+                    var ly1 = parseFloat(line.getAttribute('y1') || 0);
+                    var lx2 = parseFloat(line.getAttribute('x2') || 0);
+                    var ly2 = parseFloat(line.getAttribute('y2') || 0);
+
+                    var pt1 = svg.createSVGPoint();
+                    pt1.x = lx1; pt1.y = ly1;
+                    var s1 = pt1.matrixTransform(ctmL);
+
+                    var pt2 = svg.createSVGPoint();
+                    pt2.x = lx2; pt2.y = ly2;
+                    var s2 = pt2.matrixTransform(ctmL);
+
+                    var dist = distToSegment(mx, my, s1.x, s1.y, s2.x, s2.y);
+                    if (dist < PROXIMITY_PX) newHL.push(line);
+                }
+
                 /* Avvalgini o'chir */
-                highlighted.forEach(function(p) {
-                    if (newHL.indexOf(p) === -1) {
-                        p.style.stroke      = '';
-                        p.style.strokeWidth = '';
+                highlighted.forEach(function (el) {
+                    if (newHL.indexOf(el) === -1) {
+                        el.style.stroke = '';
+                        el.style.strokeWidth = '';
                     }
                 });
                 /* Yangini yoq */
-                newHL.forEach(function(p) {
-                    p.style.stroke      = '#22c55e';
-                    p.style.strokeWidth = '8px';
+                newHL.forEach(function (el) {
+                    el.style.stroke = '#22c55e';
+                    el.style.strokeWidth = '8px';
                 });
                 highlighted = newHL;
             }
 
-            container.addEventListener('mousemove', function(e) {
+            container.addEventListener('mousemove', function (e) {
                 var mx = e.clientX, my = e.clientY;
                 if (rafId) cancelAnimationFrame(rafId);
-                rafId = requestAnimationFrame(function() {
+                rafId = requestAnimationFrame(function () {
                     checkProximity(mx, my);
                     rafId = null;
                 });
             });
 
-            container.addEventListener('mouseleave', function() {
+            container.addEventListener('mouseleave', function () {
                 if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-                highlighted.forEach(function(p) {
-                    p.style.stroke      = '';
-                    p.style.strokeWidth = '';
+                highlighted.forEach(function (el) {
+                    el.style.stroke = '';
+                    el.style.strokeWidth = '';
                 });
                 highlighted = [];
             });
         }
+
 
         /* ────────────────────────────────────────────────────────────
            FAMILYTREE.JS INIT
@@ -626,27 +682,27 @@
 
             function getTransformXY(el) {
                 const t = el.getAttribute('transform');
-                if (!t) return {x:0, y:0};
+                if (!t) return { x: 0, y: 0 };
                 let m = t.match(/matrix\(([^)]+)\)/);
                 if (m) {
                     let p = m[1].split(',');
-                    return {x: parseFloat(p[4]), y: parseFloat(p[5])};
+                    return { x: parseFloat(p[4]), y: parseFloat(p[5]) };
                 }
                 m = t.match(/translate\(([^,]+),?\s*([^)]+)?\)/);
                 if (m) {
-                    return {x: parseFloat(m[1]), y: m[2] ? parseFloat(m[2]) : 0};
+                    return { x: parseFloat(m[1]), y: m[2] ? parseFloat(m[2]) : 0 };
                 }
-                return {x:0, y:0};
+                return { x: 0, y: 0 };
             }
 
             // Custom Drawing (Chizma) for Adding Nodes
-            window._openCustomTreeMenu = function(e, id) {
+            window._openCustomTreeMenu = function (e, id) {
                 e.stopPropagation();
-                
+
                 var old = document.getElementById('customTreeMenuGroup');
                 if (old) old.remove();
 
-                setTimeout(function() {
+                setTimeout(function () {
                     document.addEventListener('click', function closeMenu(ev) {
                         var m = document.getElementById('customTreeMenuGroup');
                         if (m) m.remove();
@@ -669,7 +725,7 @@
                 function createBtn(text, bx, by, color, actionFn, labelText) {
                     var g = document.createElementNS(ns, "g");
                     g.setAttribute("style", "cursor:pointer; pointer-events:all;");
-                    g.addEventListener('click', function(ev) {
+                    g.addEventListener('click', function (ev) {
                         ev.stopPropagation();
                         if (group) group.remove();
                         actionFn();
@@ -712,7 +768,7 @@
                     hov.setAttribute("r", "20");
                     hov.setAttribute("fill", "transparent");
                     g.appendChild(hov);
-                    
+
                     group.appendChild(g);
                 }
 
@@ -731,27 +787,27 @@
                 function createCard(title, bx, by, color, actionFn, subLabel, iconChar) {
                     var g = document.createElementNS(ns, "g");
                     g.setAttribute("style", "cursor:pointer; pointer-events:all; transition: opacity 0.2s;");
-                    g.addEventListener('click', function(ev) {
+                    g.addEventListener('click', function (ev) {
                         ev.stopPropagation();
                         if (group) group.remove();
                         if (actionFn) actionFn();
                     });
-                    
+
                     var w = 216, h = 90;
 
                     var rect = document.createElementNS(ns, "rect");
-                    rect.setAttribute("x", bx - w/2);
+                    rect.setAttribute("x", bx - w / 2);
                     rect.setAttribute("y", by);
                     rect.setAttribute("width", w);
                     rect.setAttribute("height", h);
-                    rect.setAttribute("fill", "#1c1c42"); 
+                    rect.setAttribute("fill", "#1c1c42");
                     rect.setAttribute("stroke", color);
                     rect.setAttribute("stroke-width", "1");
                     rect.setAttribute("rx", "5");
                     g.appendChild(rect);
 
                     var txt = document.createElementNS(ns, "text");
-                    txt.setAttribute("x", bx + w/2 - 15);
+                    txt.setAttribute("x", bx + w / 2 - 15);
                     txt.setAttribute("y", by + 25);
                     txt.setAttribute("text-anchor", "end");
                     txt.setAttribute("font-size", "14");
@@ -766,7 +822,7 @@
                     }
 
                     var icon = document.createElementNS(ns, "text");
-                    icon.setAttribute("x", bx - w/2 + 40);
+                    icon.setAttribute("x", bx - w / 2 + 40);
                     icon.setAttribute("y", by + 55);
                     icon.setAttribute("text-anchor", "middle");
                     icon.setAttribute("font-size", "36");
@@ -794,21 +850,21 @@
                 var colorFemale = "#f57c00";
 
                 // 1. Parent Btn (Top)
-                drawLine(nx + nw/2, ny, nx + nw/2, ny - 40, colorParent);
-                createBtn("+", nx + nw/2, ny - 40, colorParent, function() { addParent(id); }, "Ota-ona");
+                drawLine(nx + nw / 2, ny, nx + nw / 2, ny - 40, colorParent);
+                createBtn("+", nx + nw / 2, ny - 40, colorParent, function () { addParent(id); }, "Ota-ona");
 
                 // 2. Spouse Left Btn
-                drawLine(nx, ny + nh/2, nx - 40, ny + nh/2, colorSpouse);
-                createBtn("+", nx - 40, ny + nh/2, colorSpouse, function() { addSpouse(id); }, "");
+                drawLine(nx, ny + nh / 2, nx - 40, ny + nh / 2, colorSpouse);
+                createBtn("+", nx - 40, ny + nh / 2, colorSpouse, function () { addSpouse(id); }, "");
 
                 // 3. Spouse Right Btn
-                drawLine(nx + nw, ny + nh/2, nx + nw + 40, ny + nh/2, colorSpouse);
-                createBtn("+", nx + nw + 40, ny + nh/2, colorSpouse, function() { addSpouse(id); }, "");
+                drawLine(nx + nw, ny + nh / 2, nx + nw + 40, ny + nh / 2, colorSpouse);
+                createBtn("+", nx + nw + 40, ny + nh / 2, colorSpouse, function () { addSpouse(id); }, "");
 
                 // === 4. Har bir spouse uchun alohida ustun (fixed horizontal spacing) ===
 
                 // spouseId bo'yicha mavjud farzandlarni topish
-                var getExistingChildren = function(spouseId) {
+                var getExistingChildren = function (spouseId) {
                     var result = [];
                     for (var cId in _loadedFtNodes) {
                         var ch = _loadedFtNodes[cId];
@@ -845,7 +901,7 @@
                     // Spouse yo'q — bitta ustun (juft ko'rsatmasdan)
                     columns.push({ spouseId: null, label: '' });
                 }
-                console.log('[customMenu] columns:', columns.length, columns.map(function(c){ return c.label; }));
+                console.log('[customMenu] columns:', columns.length, columns.map(function (c) { return c.label; }));
 
 
                 // Horizontal spacing: card kengligi 216, oraliq 8
@@ -862,7 +918,7 @@
 
                 // Har bir ustunni chizish (IIFE bilan closure muammosini yopamiz)
                 for (var ci = 0; ci < columns.length; ci++) {
-                    (function(col, colIndex) {
+                    (function (col, colIndex) {
                         var colLeft = firstColLeft + colIndex * COL_STEP; // rect chap qirrasi
                         var colMidX = colLeft + CARD_W / 2;               // ustun markazi
 
@@ -871,13 +927,13 @@
                         // ── Asosiy noddan ushbu ustun tepasiga yo'naltiruvchi chiziq ──
                         var anchorX = nx + nw / 2;
                         var anchorY = ny + nh;
-                        var elbowY  = anchorY + 20;
+                        var elbowY = anchorY + 20;
                         var guidePath = document.createElementNS(ns, "path");
                         guidePath.setAttribute("d",
                             "M " + anchorX + " " + anchorY +
-                            " L " + anchorX + " " + elbowY  +
-                            " L " + colMidX  + " " + elbowY  +
-                            " L " + colMidX  + " " + curY
+                            " L " + anchorX + " " + elbowY +
+                            " L " + colMidX + " " + elbowY +
+                            " L " + colMidX + " " + curY
                         );
                         guidePath.setAttribute("fill", "none");
                         guidePath.setAttribute("stroke", "#555");
@@ -901,8 +957,8 @@
 
                         // ── Add son ──
                         createCard("Add son", colMidX, curY, colorMale,
-                            (function(sid) {
-                                return function() {
+                            (function (sid) {
+                                return function () {
                                     _pendingChildId = id;
                                     _pendingChildSpouseId = sid;
                                     _pendingChildTreeId = _nodeTreeIdMap[id] || Number(getTreeId());
@@ -922,8 +978,8 @@
 
                         // ── Add daughter ──
                         createCard("Add daughter", colMidX, curY, colorFemale,
-                            (function(sid) {
-                                return function() {
+                            (function (sid) {
+                                return function () {
                                     _pendingChildId = id;
                                     _pendingChildSpouseId = sid;
                                     _pendingChildTreeId = _nodeTreeIdMap[id] || Number(getTreeId());
@@ -955,7 +1011,7 @@
                             curY += 18;
 
                             for (var ki = 0; ki < kids.length; ki++) {
-                                (function(kid) {
+                                (function (kid) {
                                     var conn3 = document.createElementNS(ns, "line");
                                     conn3.setAttribute("x1", colMidX); conn3.setAttribute("y1", curY);
                                     conn3.setAttribute("x2", colMidX); conn3.setAttribute("y2", curY + 8);
@@ -967,7 +1023,7 @@
                                     var kTitle = (kid.name || '—').substring(0, 18);
                                     createCard(kTitle, colMidX, curY,
                                         isFem ? colorFemale : colorMale,
-                                        function() { chart.center(kid.id); },
+                                        function () { chart.center(kid.id); },
                                         kid.years || '', isFem ? "👧" : "👦");
                                     curY += 90;
                                 })(kids[ki]);
@@ -983,7 +1039,7 @@
             };
 
             // Inject custom SVG Node Button to 'tommy' template (w=216)
-            FamilyTree.templates.tommy.customTreeMenuBtn = 
+            FamilyTree.templates.tommy.customTreeMenuBtn =
                 '<g style="cursor:pointer;" onclick="window._openCustomTreeMenu(event, \'{id}\')"><circle cx="216" cy="12" r="14" fill="#039be5" /><circle cx="223" cy="19" r="6" fill="#fff" /><path d="M220 18.25h6v1.5h-6z" fill="#039be5" /><path d="M222.25 16v6h1.5v-6z" fill="#039be5" /><path d="M216 4a4 4 0 100 8 4 4 0 000-8zm-6 13c0-2.5 3.5-4 6-4s6 1.5 6 4v1h-12z" fill="#fff" /></g>';
 
             /* global handler — nodeMenu onclick uchun */
@@ -1265,9 +1321,9 @@
                             if (spouseMap[c.toId].indexOf(c.fromId) < 0) spouseMap[c.toId].push(c.fromId);
                             // ── GLOBAL xaritaga ham qo'shamiz (merge) ──
                             var rFrom = String(c.fromId);
-                            var rTo   = String(c.toId);
+                            var rTo = String(c.toId);
                             if (!_spouseMapGlobal[rFrom]) _spouseMapGlobal[rFrom] = [];
-                            if (!_spouseMapGlobal[rTo])   _spouseMapGlobal[rTo]   = [];
+                            if (!_spouseMapGlobal[rTo]) _spouseMapGlobal[rTo] = [];
                             if (_spouseMapGlobal[rFrom].indexOf(rTo) < 0) _spouseMapGlobal[rFrom].push(rTo);
                             if (_spouseMapGlobal[rTo].indexOf(rFrom) < 0) _spouseMapGlobal[rTo].push(rFrom);
                         }
@@ -1395,7 +1451,7 @@
         /* Amallar tugaganida treeId bo'yicha qayta yuklash */
         function reloadTree(personId) {
             if (chart) {
-                try { chart.destroy(); } catch (e) {}
+                try { chart.destroy(); } catch (e) { }
             }
             document.getElementById('tree').innerHTML = '';
             chart = null;
@@ -1448,9 +1504,9 @@
                     if (spouseMap[c.toId].indexOf(c.fromId) < 0) spouseMap[c.toId].push(c.fromId);
                     // GLOBAL xarita: KEY va VALUE ikkalasi ham String — type mismatch oldini olamiz
                     var gFrom = String(c.fromId);
-                    var gTo   = String(c.toId);
+                    var gTo = String(c.toId);
                     if (!_spouseMapGlobal[gFrom]) _spouseMapGlobal[gFrom] = [];
-                    if (!_spouseMapGlobal[gTo])   _spouseMapGlobal[gTo]   = [];
+                    if (!_spouseMapGlobal[gTo]) _spouseMapGlobal[gTo] = [];
                     if (_spouseMapGlobal[gFrom].indexOf(gTo) < 0) _spouseMapGlobal[gFrom].push(gTo);
                     if (_spouseMapGlobal[gTo].indexOf(gFrom) < 0) _spouseMapGlobal[gTo].push(gFrom);
                 }
