@@ -532,6 +532,42 @@ function getTreeId() {
         || '';
 }
 
+function saveLayoutToServer() {
+    if (!chart || !chart.nodes) {
+        showError('Hali chart yuklanmagan!');
+        return;
+    }
+
+    var treeId = getTreeId();
+    var positions = [];
+    var nodes = chart.nodes;
+
+    for (var id in nodes) {
+        var node = nodes[id];
+        positions.push({
+            id: id,
+            x: node.x,
+            y: node.y
+        });
+    }
+
+    if (positions.length === 0) {
+        showError('Saqlash uchun kordinatalar yo\'q!');
+        return;
+    }
+
+    apiFetch('POST', '/api/shajara/save-layout?treeId=' + treeId,
+        positions,
+        function (res) {
+            console.log('Layout saqlandi:', res);
+            alert('Kordinatalar ' + (treeId ? 'layout_' + treeId + '.json' : 'layout.json') + ' fayliga saqlandi!');
+        },
+        function (err) {
+            showError('Kordinatalarni saqlashda xatolik:\n' + err);
+        }
+    );
+}
+
 function getParam(k) {
     return new URLSearchParams(location.search).get(k);
 }

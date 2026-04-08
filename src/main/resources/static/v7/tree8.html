@@ -432,6 +432,12 @@
             background: rgba(99, 102, 241, .15);
             color: #fff;
         }
+
+        /* ── SVG LINES PROXIMITY EFFECT (JS boshqaradi) ── */
+        path {
+            cursor: pointer;
+            transition: stroke 0.2s, stroke-width 0.2s;
+        }
     </style>
 </head>
 
@@ -521,9 +527,93 @@
             if (urlTreeId) document.getElementById('treeIdInput').value = urlTreeId;
 
             initChart();
+            setupPathProximity(); /* Chiziqqa yaqinlik detection */
 
             if (urlToken && urlTreeId) loadTree();
         });
+
+        /* ────────────────────────────────────────────────────────────
+           PROXIMITY HIGHLIGHT
+           Chiziqdan PROXIMITY_PX (screen px) masofada bo'lganda yashil.
+           getPointAtLength + getScreenCTM → aniq screen koordinat.
+        ──────────────────────────────────────────────────────────── */
+        function setupPathProximity() {
+            var container = document.getElementById('tree');
+            if (!container || container._proximityBound) return;
+            container._proximityBound = true;
+
+            var PROXIMITY_PX = 6;    /* sichqonchen chiziqqa maksimal masofa (px) */
+            var STEPS        = 40;   /* har bir path bo'ylab qancha nuqta tekshiriladi */
+            var highlighted  = [];   /* hozir yashil bo'lgan path lar */
+            var rafId        = null; /* requestAnimationFrame ID */
+
+            function checkProximity(mx, my) {
+                var svg = container.querySelector('svg');
+                if (!svg) return;
+
+                /* Faqat bog'lovchi chiziqlar: fill="none" yoki stroke bo'lgan path lar */
+                var paths = svg.querySelectorAll('path[fill="none"]');
+                var newHL = [];
+
+                for (var pi = 0; pi < paths.length; pi++) {
+                    var path = paths[pi];
+                    var len = 0;
+                    try { len = path.getTotalLength(); } catch(e) { continue; }
+                    if (len <= 0) continue;
+
+                    var ctm;
+                    try { ctm = path.getScreenCTM(); } catch(e) { continue; }
+                    if (!ctm) continue;
+
+                    var steps = Math.min(STEPS, Math.max(5, Math.floor(len / 8)));
+                    var minDist = Infinity;
+
+                    for (var s = 0; s <= steps; s++) {
+                        var local  = path.getPointAtLength((s / steps) * len);
+                        var screen = local.matrixTransform(ctm);
+                        var dx = screen.x - mx;
+                        var dy = screen.y - my;
+                        var d  = Math.sqrt(dx * dx + dy * dy);
+                        if (d < minDist) minDist = d;
+                        if (minDist < PROXIMITY_PX) break; /* erta chiqish */
+                    }
+
+                    if (minDist < PROXIMITY_PX) newHL.push(path);
+                }
+
+                /* Avvalgini o'chir */
+                highlighted.forEach(function(p) {
+                    if (newHL.indexOf(p) === -1) {
+                        p.style.stroke      = '';
+                        p.style.strokeWidth = '';
+                    }
+                });
+                /* Yangini yoq */
+                newHL.forEach(function(p) {
+                    p.style.stroke      = '#22c55e';
+                    p.style.strokeWidth = '8px';
+                });
+                highlighted = newHL;
+            }
+
+            container.addEventListener('mousemove', function(e) {
+                var mx = e.clientX, my = e.clientY;
+                if (rafId) cancelAnimationFrame(rafId);
+                rafId = requestAnimationFrame(function() {
+                    checkProximity(mx, my);
+                    rafId = null;
+                });
+            });
+
+            container.addEventListener('mouseleave', function() {
+                if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+                highlighted.forEach(function(p) {
+                    p.style.stroke      = '';
+                    p.style.strokeWidth = '';
+                });
+                highlighted = [];
+            });
+        }
 
         /* ────────────────────────────────────────────────────────────
            FAMILYTREE.JS INIT

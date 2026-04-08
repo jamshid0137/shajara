@@ -292,21 +292,45 @@ public class OrgChartLayoutCalculatorNew {
         // hGap = parentdan spouse ustunigacha gorizontal bo'shliq
         // vGap = spouselar orasidagi vertikal bo'shliq
         double hGap = cfg.partnerNodeSeparation * 4; // gorizontal: 60px (2x kengroq)
-        double vGap = cfg.partnerNodeSeparation; // vertikal: 15px (kichik, ixcham ustun)
+        double vGap = cfg.partnerNodeSeparation * 2; // vertikal: Kattalashtirildi (2x)
 
         for (Map.Entry<String, List<Node>> e : partnersByParent.entrySet()) {
             Node parentNode = nodeMap.get(e.getKey());
             if (parentNode == null)
                 continue;
 
-            // partnerType=1 -> RIGHT, partnerType=2 -> LEFT
             List<Node> rightPartners = new ArrayList<>();
             List<Node> leftPartners = new ArrayList<>();
-            for (Node partner : e.getValue()) {
-                if (partner.partnerType == 2)
-                    leftPartners.add(partner);
-                else
-                    rightPartners.add(partner);
+            
+            boolean inAddMode = false;
+            for (Node p : e.getValue()) {
+                for (Node pc : p.children) {
+                    if (pc.id != null && pc.id.startsWith("_ft_child_group_")) {
+                        inAddMode = true;
+                        break;
+                    }
+                }
+                if (inAddMode) break;
+            }
+
+            if (inAddMode) {
+                // Add Mode: AddPartner (phantom) -> LEFT, other spouses -> RIGHT
+                for (Node partner : e.getValue()) {
+                    boolean isPhantom = partner.id != null && 
+                        (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
+                    if (isPhantom)
+                        leftPartners.add(partner);
+                    else
+                        rightPartners.add(partner);
+                }
+            } else {
+                // Normal Mode: respect partnerType
+                for (Node partner : e.getValue()) {
+                    if (partner.partnerType == 2)
+                        leftPartners.add(partner);
+                    else
+                        rightPartners.add(partner);
+                }
             }
 
             // LEVEL MAX_X/MIN_X xaritasi (bolalar va add son/daughter lar ustma-ust tushmasligi uchun)
@@ -339,7 +363,7 @@ public class OrgChartLayoutCalculatorNew {
                      double requiredShift = 0;
                      for (Node c : partner.children) {
                          if (!c.isPartner) {
-                             double shift = checkMinXOverlap(c, partnerLevelMinXMap, cfg.siblingSeparation);
+                             double shift = checkMinXOverlap(c, partnerLevelMinXMap, cfg.siblingSeparation * 2);
                              if (shift < requiredShift) requiredShift = shift; // manfiy siljish
                          }
                      }
@@ -372,7 +396,7 @@ public class OrgChartLayoutCalculatorNew {
                     double requiredShift = 0;
                     for (Node c : partner.children) {
                         if (!c.isPartner) {
-                            double shift = checkMaxXOverlap(c, partnerLevelMaxXMap, cfg.siblingSeparation);
+                            double shift = checkMaxXOverlap(c, partnerLevelMaxXMap, cfg.siblingSeparation * 2);
                             if (shift > requiredShift) requiredShift = shift; // musbat siljish
                         }
                     }
@@ -448,11 +472,36 @@ public class OrgChartLayoutCalculatorNew {
 
             List<Node> rightPartners = new ArrayList<>();
             List<Node> leftPartners = new ArrayList<>();
-            for (Node partner : e.getValue()) {
-                if (partner.partnerType == 2)
-                    leftPartners.add(partner);
-                else
-                    rightPartners.add(partner);
+
+            boolean inAddMode = false;
+            for (Node p : e.getValue()) {
+                for (Node pc : p.children) {
+                    if (pc.id != null && pc.id.startsWith("_ft_child_group_")) {
+                        inAddMode = true;
+                        break;
+                    }
+                }
+                if (inAddMode) break;
+            }
+
+            if (inAddMode) {
+                // Add Mode: AddPartner (phantom) -> LEFT, other spouses -> RIGHT
+                for (Node partner : e.getValue()) {
+                    boolean isPhantom = partner.id != null && 
+                        (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
+                    if (isPhantom)
+                        leftPartners.add(partner);
+                    else
+                        rightPartners.add(partner);
+                }
+            } else {
+                // Normal Mode: respect partnerType
+                for (Node partner : e.getValue()) {
+                    if (partner.partnerType == 2)
+                        leftPartners.add(partner);
+                    else
+                        rightPartners.add(partner);
+                }
             }
 
             if (!leftPartners.isEmpty()) {
@@ -764,11 +813,36 @@ public class OrgChartLayoutCalculatorNew {
 
             List<Node> rightPartners = new ArrayList<>();
             List<Node> leftPartners = new ArrayList<>();
-            for (Node partner : e.getValue()) {
-                if (partner.partnerType == 2)
-                    leftPartners.add(partner);
-                else
-                    rightPartners.add(partner);
+
+            boolean inAddMode = false;
+            for (Node p : e.getValue()) {
+                for (Node pc : p.children) {
+                    if (pc.id != null && pc.id.startsWith("_ft_child_group_")) {
+                        inAddMode = true;
+                        break;
+                    }
+                }
+                if (inAddMode) break;
+            }
+
+            if (inAddMode) {
+                // Add Mode: AddPartner (phantom) -> LEFT, other spouses -> RIGHT
+                for (Node partner : e.getValue()) {
+                    boolean isPhantom = partner.id != null && 
+                        (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
+                    if (isPhantom)
+                        leftPartners.add(partner);
+                    else
+                        rightPartners.add(partner);
+                }
+            } else {
+                // Normal Mode: respect partnerType
+                for (Node partner : e.getValue()) {
+                    if (partner.partnerType == 2)
+                        leftPartners.add(partner);
+                    else
+                        rightPartners.add(partner);
+                }
             }
 
             if (!leftPartners.isEmpty()) {
@@ -1305,9 +1379,110 @@ public class OrgChartLayoutCalculatorNew {
                 }
             }
 
+            if (enforcePartnerChildrenOrder(cfg, nodeToPartners)) {
+                changed = true;
+            }
+
             if (!changed)
                 break;
         }
+    }
+
+    private boolean enforcePartnerChildrenOrder(LayoutConfig cfg, Map<String, List<Node>> nodeToPartners) {
+        boolean changed = false;
+        for (Map.Entry<String, List<Node>> e : nodeToPartners.entrySet()) {
+            List<Node> partners = e.getValue();
+            if (partners.size() <= 1) continue;
+
+            List<Node> rightPartners = new ArrayList<>();
+            List<Node> leftPartners = new ArrayList<>();
+            
+            boolean inAddMode = false;
+            for (Node p : partners) {
+                for (Node pc : p.children) {
+                    if (pc.id != null && pc.id.startsWith("_ft_child_group_")) {
+                        inAddMode = true;
+                        break;
+                    }
+                }
+                if (inAddMode) break;
+            }
+
+            if (inAddMode) {
+                for (Node partner : partners) {
+                    boolean isPhantom = partner.id != null && 
+                        (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
+                    if (isPhantom)
+                        leftPartners.add(partner);
+                    else
+                        rightPartners.add(partner);
+                }
+            } else {
+                for (Node partner : partners) {
+                    if (partner.partnerType == 2)
+                        leftPartners.add(partner);
+                    else
+                        rightPartners.add(partner);
+                }
+            }
+
+            // Right Partners: top spouse children leftmost -> bottom spouse children rightmost
+            for (int i = 1; i < rightPartners.size(); i++) {
+                Node prev = rightPartners.get(i - 1);
+                Node curr = rightPartners.get(i);
+
+                double prevMaxX = getChildrenSubtreeMaxX(prev);
+                double currMinX = getChildrenSubtreeMinX(curr);
+
+                if (prevMaxX != Double.NEGATIVE_INFINITY && currMinX != Double.POSITIVE_INFINITY) {
+                    double requiredMinX = prevMaxX + (cfg.siblingSeparation * 2);
+                    if (currMinX < requiredMinX - 0.01) {
+                        double shift = requiredMinX - currMinX;
+                        for (Node c : curr.children) {
+                            if (!c.isPartner) shiftSubtreeX(c, shift);
+                        }
+                        changed = true;
+                    }
+                }
+            }
+
+            // Left Partners: top spouse children rightmost -> bottom spouse children leftmost
+            for (int i = 1; i < leftPartners.size(); i++) {
+                Node prev = leftPartners.get(i - 1);
+                Node curr = leftPartners.get(i);
+
+                double prevMinX = getChildrenSubtreeMinX(prev);
+                double currMaxX = getChildrenSubtreeMaxX(curr);
+
+                if (prevMinX != Double.POSITIVE_INFINITY && currMaxX != Double.NEGATIVE_INFINITY) {
+                    double requiredMaxX = prevMinX - (cfg.siblingSeparation * 2);
+                    if (currMaxX > requiredMaxX + 0.01) {
+                        double shift = requiredMaxX - currMaxX; // Manfiy qiymat (chapga surish)
+                        for (Node c : curr.children) {
+                            if (!c.isPartner) shiftSubtreeX(c, shift);
+                        }
+                        changed = true;
+                    }
+                }
+            }
+        }
+        return changed;
+    }
+
+    private double getChildrenSubtreeMaxX(Node p) {
+        double max = Double.NEGATIVE_INFINITY;
+        for (Node c : p.children) {
+            if (!c.isPartner) max = Math.max(max, subtreeMaxX(c));
+        }
+        return max;
+    }
+
+    private double getChildrenSubtreeMinX(Node p) {
+        double min = Double.POSITIVE_INFINITY;
+        for (Node c : p.children) {
+            if (!c.isPartner) min = Math.min(min, subtreeMinX(c));
+        }
+        return min;
     }
 
     private void collectAllNodes(Node v, List<Node> list, Set<String> seen) {
