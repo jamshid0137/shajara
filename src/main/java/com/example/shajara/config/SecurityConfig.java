@@ -33,25 +33,7 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/v3/api-docs",
             "/v3/api-docs/**",
-            // Statik fayllar — JWT talab etilmaydi
-            "/lib/**",
-            "/tree.html",
-            "/style.css",
-            "/app.js",
-            "/app2.js",
-            "/index.html",
-            "/*.html",
-            "/*.css",
-            "/*.js",
-            // v3 — to'liq daraxt moduli (tree3.html + app3.js)
-            "/v3/**",
-            // v4 — o'z SVG rendereri, FamilyTree.js siz
-            "/v4/**",
-            "/tree5/**",
-            "/api/layout/**",
-            // v6 — OrgChart.js asosidagi tree6.html
-            "/v6/**",
-            "/api/layout1/**",
+            // v7 — FamilyTree.js asosidagi asosiy modul
             "/v7/**",
             "/api/layout1new/**"
     };

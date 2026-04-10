@@ -8,7 +8,7 @@
         <version>4.0.2</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.example</groupId>
+    <groupId>uz.devops</groupId>
     <artifactId>shajara</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>shajara</name>
@@ -68,12 +68,6 @@
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-mail</artifactId>
-        </dependency>
-
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
@@ -108,12 +102,7 @@
             <version>2.7.0</version>
         </dependency>
 
-        <!-- AWS SDK S3 (v2) -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>s3</artifactId>
-            <version>2.20.0</version>
-        </dependency>
+
 
 
 

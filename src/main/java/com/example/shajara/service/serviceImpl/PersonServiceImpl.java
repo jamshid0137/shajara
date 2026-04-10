@@ -21,9 +21,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+//import software.amazon.awssdk.core.sync.RequestBody;
+//import software.amazon.awssdk.services.s3.S3Client;
+//import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import java.util.List;
 import java.util.UUID;
@@ -38,21 +38,9 @@ public class PersonServiceImpl implements PersonService {
     private final RelationService relationService;
     private final RelationRepository relationRepository;
 
-    private final S3Client s3Client; // todo
+    //private final S3Client s3Client; // todo
 
-    // private final S3SignedUrlService s3SignedUrlService;
-    //
-    // public String getPersonPhotoSignedUrl(Person person) {
-    // if(person.getPhotoUrl() == null) return null;
-    //
-    // String bucketName = "shajara-person-photos";
-    // // URLdan keyni olish
-    // String key =
-    // person.getPhotoUrl().substring(person.getPhotoUrl().lastIndexOf("/") + 1);
-    //
-    // // 60 daqiqa amal qiladigan URL
-    // return s3SignedUrlService.generateSignedUrl(bucketName, key, 60);
-    // }
+
 
     @Override
     public PersonAddChildResponseDto addChild(PersonAddChildDto dto) {
@@ -449,12 +437,12 @@ public class PersonServiceImpl implements PersonService {
 
             String oldKey = person.getPhotoUrl().substring(person.getPhotoUrl().lastIndexOf("/") + 1);
 
-            try {
-                s3Client.deleteObject(builder -> builder.bucket(bucketName).key(oldKey));
-            } catch (Exception e) {
-                e.printStackTrace();
-                // Agar delete muvaffaqiyatsiz bo'lsa ham davom etamiz
-            }
+//            try {
+//                s3Client.deleteObject(builder -> builder.bucket(bucketName).key(oldKey));
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                // Agar delete muvaffaqiyatsiz bo'lsa ham davom etamiz
+//            }
         }
 
         //
@@ -686,12 +674,12 @@ public class PersonServiceImpl implements PersonService {
 
             String oldKey = person.getPhotoUrl().substring(person.getPhotoUrl().lastIndexOf("/") + 1);
 
-            try {
-                s3Client.deleteObject(builder -> builder.bucket(bucketName).key(oldKey));
-            } catch (Exception e) {
-                e.printStackTrace();
-                // Agar delete muvaffaqiyatsiz bo'lsa ham davom etamiz
-            }
+//            try {
+//                //s3Client.deleteObject(builder -> builder.bucket(bucketName).key(oldKey));
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//                // Agar delete muvaffaqiyatsiz bo'lsa ham davom etamiz
+//            }
         }
 
         // Yangi rasmni S3 ga yuklash
@@ -699,18 +687,18 @@ public class PersonServiceImpl implements PersonService {
         String timestamp = UUID.randomUUID().toString();
         String newFileName = "person_" + person.getId() + timestamp + fileExtension;
 
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(bucketName)
-                .key(newFileName)
-                .contentType(photo.getContentType())
-                .build();
+//        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+//                .bucket(bucketName)
+//                .key(newFileName)
+//                .contentType(photo.getContentType())
+//                .build();
 
-        try {
-            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(photo.getInputStream(), photo.getSize()));
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new AppBadException("Failed to upload photo to S3");
-        }
+//        try {
+//            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(photo.getInputStream(), photo.getSize()));
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            throw new AppBadException("Failed to upload photo to S3");
+//        }
 
         // Bazaga yangi URL saqlash
         String fileUrl = "https://" + bucketName + ".s3.us-east-1.amazonaws.com/" + newFileName;
