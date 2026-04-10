@@ -2,6 +2,8 @@ package com.example.shajara.service.serviceImpl;
 
 //import com.example.shajara.config.S3SignedUrlService;
 import com.example.shajara.dto.person.PersonAddParentDto;
+import com.example.shajara.dto.person.PersonAddFatherDto;
+import com.example.shajara.dto.person.PersonAddMotherDto;
 import com.example.shajara.dto.person.*;
 import com.example.shajara.entity.FamilyTree;
 import com.example.shajara.entity.Person;
@@ -209,6 +211,105 @@ public class PersonServiceImpl implements PersonService {
         // fatherId va/yoki motherId yangilangan bo'lishi mumkin
         personRepository.save(child);
 
+        return new PersonAddParentDto(dto.getId(), child.getFatherId(), child.getMotherId(), dto.getTreeId());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // FAQAT OTA QO'SHISH
+    // Agar childa allaqachon fatherId bo'lsa — xato qaytariladi.
+    // Onaga (motherId) tegmaydi.
+    // ─────────────────────────────────────────────────────────────────────────
+    @Override
+    @Transactional
+    public PersonAddParentDto addFather(PersonAddFatherDto dto) {
+        Person child = personRepository.findById(dto.getId())
+                .orElseThrow(() -> new NotFoundException("Person topilmadi: " + dto.getId()));
+
+        if (child.getFatherId() != null && child.getFatherId() != 0) {
+            throw new AppBadException("Bu kishining otasi allaqachon mavjud!");
+        }
+
+        FamilyTree familyTree = familyTreeRepository.findById(dto.getTreeId())
+                .orElseThrow(() -> new NotFoundException("FamilyTree topilmadi: " + dto.getTreeId()));
+
+        // Yangi ota yaratamiz
+        Person father = new Person();
+        father.setFamilyTree(familyTree);
+        father.setGender(Gender.MALE);
+        father.setName("Father");
+        father.setPhotoUrl("https://shajara-person-photos.s3.us-east-1.amazonaws.com/default-male.png");
+        father = personRepository.save(father);
+
+        final Person savedFather = father;
+
+        child.setFatherId(savedFather.getId());
+
+        // Agar childa ona ham bo'lsa — ota va ona o'rtasida SPOUSE relation
+        if (child.getMotherId() != null && child.getMotherId() != 0) {
+            personRepository.findById(child.getMotherId()).ifPresent(mother -> {
+                boolean alreadySpouses = relationRepository
+                        .findAllSpousesNative(savedFather.getId())
+                        .stream().anyMatch(s -> s.getId().equals(mother.getId()));
+                if (!alreadySpouses) {
+                    relationRepository.save(Relation.builder()
+                            .fromPerson(savedFather)
+                            .toPerson(mother)
+                            .type(RelationType.SPOUSE)
+                            .build());
+                }
+            });
+        }
+
+        personRepository.save(child);
+        return new PersonAddParentDto(dto.getId(), child.getFatherId(), child.getMotherId(), dto.getTreeId());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // FAQAT ONA QO'SHISH
+    // Agar childa allaqachon motherId bo'lsa — xato qaytariladi.
+    // Otaga (fatherId) tegmaydi.
+    // ─────────────────────────────────────────────────────────────────────────
+    @Override
+    @Transactional
+    public PersonAddParentDto addMother(PersonAddMotherDto dto) {
+        Person child = personRepository.findById(dto.getId())
+                .orElseThrow(() -> new NotFoundException("Person topilmadi: " + dto.getId()));
+
+        if (child.getMotherId() != null && child.getMotherId() != 0) {
+            throw new AppBadException("Bu kishining onasi allaqachon mavjud!");
+        }
+
+        FamilyTree familyTree = familyTreeRepository.findById(dto.getTreeId())
+                .orElseThrow(() -> new NotFoundException("FamilyTree topilmadi: " + dto.getTreeId()));
+
+        // Yangi ona yaratamiz
+        Person mother = new Person();
+        mother.setFamilyTree(familyTree);
+        mother.setGender(Gender.FEMALE);
+        mother.setName("Mother");
+        mother.setPhotoUrl("https://shajara-person-photos.s3.us-east-1.amazonaws.com/default-female.jpg");
+        mother = personRepository.save(mother);
+
+        child.setMotherId(mother.getId());
+
+        // Agar childa ota ham bo'lsa — ota va ona o'rtasida SPOUSE relation
+        if (child.getFatherId() != null && child.getFatherId() != 0) {
+            final Person savedMother = mother;
+            personRepository.findById(child.getFatherId()).ifPresent(father -> {
+                boolean alreadySpouses = relationRepository
+                        .findAllSpousesNative(father.getId())
+                        .stream().anyMatch(s -> s.getId().equals(savedMother.getId()));
+                if (!alreadySpouses) {
+                    relationRepository.save(Relation.builder()
+                            .fromPerson(father)
+                            .toPerson(savedMother)
+                            .type(RelationType.SPOUSE)
+                            .build());
+                }
+            });
+        }
+
+        personRepository.save(child);
         return new PersonAddParentDto(dto.getId(), child.getFatherId(), child.getMotherId(), dto.getTreeId());
     }
 

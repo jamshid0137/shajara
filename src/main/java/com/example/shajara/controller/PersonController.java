@@ -58,9 +58,24 @@ public class PersonController {
     public ResponseEntity<PersonAddParentDto> addParent(
             @RequestBody PersonAddParentDto dto
     ) {
-        //PersonResponseDto updatedChild = personService.addParent(childId, parentId);
-        PersonAddParentDto updatedChild=personService.addParents(dto);
+        PersonAddParentDto updatedChild = personService.addParents(dto);
         return ResponseEntity.ok(updatedChild);
+    }
+
+    /** Faqat otani qo'shish — childa fatherId bo'lmasa yangi MALE person yaratadi */
+    @PostMapping("/add-father")
+    public ResponseEntity<PersonAddParentDto> addFather(
+            @RequestBody PersonAddFatherDto dto
+    ) {
+        return ResponseEntity.ok(personService.addFather(dto));
+    }
+
+    /** Faqat onani qo'shish — childa motherId bo'lmasa yangi FEMALE person yaratadi */
+    @PostMapping("/add-mother")
+    public ResponseEntity<PersonAddParentDto> addMother(
+            @RequestBody PersonAddMotherDto dto
+    ) {
+        return ResponseEntity.ok(personService.addMother(dto));
     }
 
     @PostMapping("/add-spouse")

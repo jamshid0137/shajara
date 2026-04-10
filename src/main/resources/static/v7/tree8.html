@@ -849,9 +849,35 @@
                 var colorMale = "#039be5";
                 var colorFemale = "#f57c00";
 
-                // 1. Parent Btn (Top)
-                drawLine(nx + nw / 2, ny, nx + nw / 2, ny - 40, colorParent);
-                createBtn("+", nx + nw / 2, ny - 40, colorParent, function () { addParent(id); }, "Ota-ona");
+                // 1. Ota-ona tugmalari (Yuqorida)
+                // nodeObj.fid — FamilyTree.js format (fatherId)
+                // nodeObj.mid — FamilyTree.js format (motherId)
+                var hasFather = nodeObj && nodeObj.fid;
+                var hasMother = nodeObj && nodeObj.mid;
+
+                if (!hasFather && !hasMother) {
+                    // Ikkisi ham yo'q: bitta chiziq, ikki tugma yonma-yon
+                    drawLine(nx + nw / 2, ny, nx + nw / 2, ny - 40, colorParent);
+                    // Ota tugmasi - chap
+                    drawLine(nx + nw / 2, ny - 40, nx + nw / 4, ny - 40, colorMale);
+                    createBtn("+", nx + nw / 4, ny - 40, colorMale,
+                        function () { addFather(id); }, "Ota");
+                    // Ona tugmasi - o'ng
+                    drawLine(nx + nw / 2, ny - 40, nx + 3 * nw / 4, ny - 40, colorFemale);
+                    createBtn("+", nx + 3 * nw / 4, ny - 40, colorFemale,
+                        function () { addMother(id); }, "Ona");
+                } else if (!hasFather) {
+                    // Faqat ota yo'q
+                    drawLine(nx + nw / 2, ny, nx + nw / 2, ny - 40, colorMale);
+                    createBtn("+", nx + nw / 2, ny - 40, colorMale,
+                        function () { addFather(id); }, "Ota");
+                } else if (!hasMother) {
+                    // Faqat ona yo'q
+                    drawLine(nx + nw / 2, ny, nx + nw / 2, ny - 40, colorFemale);
+                    createBtn("+", nx + nw / 2, ny - 40, colorFemale,
+                        function () { addMother(id); }, "Ona");
+                }
+                // Ikkisi ham bor — tugma ko'rinmaydi
 
                 // 2. Spouse Left Btn
                 drawLine(nx, ny + nh / 2, nx - 40, ny + nh / 2, colorSpouse);
@@ -1169,14 +1195,20 @@
                        ================================================================ */
 
                     // ── 1️⃣ PARENT tekshiruvi ──────────────────────────────────────
+                    var parentType = null; // 'MOTHER' yoki 'FATHER'
                     if (args.updateNodesData && args.updateNodesData.length > 0) {
                         for (var i = 0; i < args.updateNodesData.length; i++) {
                             var uNode = args.updateNodesData[i];
                             // addedNode.id — vaqtinchalik (temp) ID, == bilan taqqoslaymiz
-                            if (String(uNode.fid) === String(addedNode.id) ||
-                                String(uNode.mid) === String(addedNode.id)) {
+                            if (String(uNode.mid) === String(addedNode.id)) {
                                 isParent = true;
-                                baseNodeId = uNode.id; // farzandning haqiqiy DB id si
+                                baseNodeId = uNode.id;
+                                parentType = 'MOTHER';
+                                break;
+                            } else if (String(uNode.fid) === String(addedNode.id)) {
+                                isParent = true;
+                                baseNodeId = uNode.id;
+                                parentType = 'FATHER';
                                 break;
                             }
                         }
@@ -1208,7 +1240,11 @@
                         '| isChild:', isChild, '| baseNodeId:', baseNodeId);
 
                     if (isParent && baseNodeId) {
-                        addParent(baseNodeId);
+                        if (parentType === 'MOTHER') {
+                            addMother(baseNodeId);
+                        } else {
+                            addFather(baseNodeId);
+                        }
                         return false;
                     } else if (isSpouse && baseNodeId) {
                         addSpouse(baseNodeId);
@@ -1610,6 +1646,36 @@
              add-spouse:  PersonAddSpouseCreate  { id, treeId }
              add-child:   PersonAddChildDto      { id, childGender, treeId }
         ──────────────────────────────────────────────────────────── */
+        function addFather(nodeId) {
+            var treeId = _nodeTreeIdMap[nodeId] || Number(getTreeId());
+            if (!treeId) { showError('Tree ID topilmadi!'); return; }
+
+            apiFetch('POST', '/api/persons/add-father',
+                { id: Number(nodeId), treeId: treeId },
+                function () {
+                    _loadedFtNodes = {};
+                    window.lastPersonId = nodeId;
+                    reloadTree(null);
+                },
+                function (err) { showError("Ota qo'shishda xatolik:\n" + err); }
+            );
+        }
+
+        function addMother(nodeId) {
+            var treeId = _nodeTreeIdMap[nodeId] || Number(getTreeId());
+            if (!treeId) { showError('Tree ID topilmadi!'); return; }
+
+            apiFetch('POST', '/api/persons/add-mother',
+                { id: Number(nodeId), treeId: treeId },
+                function () {
+                    _loadedFtNodes = {};
+                    window.lastPersonId = nodeId;
+                    reloadTree(null);
+                },
+                function (err) { showError("Ona qo'shishda xatolik:\n" + err); }
+            );
+        }
+
         function addParent(nodeId) {
             var treeId = _nodeTreeIdMap[nodeId] || Number(getTreeId());
             if (!treeId) { showError('Tree ID topilmadi!'); return; }
