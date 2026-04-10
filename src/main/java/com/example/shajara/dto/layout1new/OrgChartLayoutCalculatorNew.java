@@ -134,7 +134,7 @@ public class OrgChartLayoutCalculatorNew {
         if (nodeInputs == null || nodeInputs.isEmpty())
             return Collections.emptyMap();
 
-        // 1. Build nodeMap
+// 1. Build nodeMap
         Map<String, Node> nodeMap = new LinkedHashMap<>();
         for (NodeInput inp : nodeInputs) {
             Node n = new Node(inp.id,
@@ -549,6 +549,22 @@ public class OrgChartLayoutCalculatorNew {
         // shu qatlamdagi BARCHA nodelarni shu Y ga sinxronlashtirish.
         synchronizeLevelY(roots, cfg, nodeMap, partnersByParent, hGap, vGap);
 
+        // 10.5. CHILD GROUP COLLAPSE (addMode)
+        // _ft_child_group_ — farzand qo'shish uchun virtual konteyner.
+        // Uning bolalari (Add son/daughter) spouse chizig'i tugagan joyidan
+        // (partner.y + partner.height + levelSep) boshlanishi kerak.
+        // synchronizeLevelY DAN SO'NG qilinadi — aks holda sinxronizatsiya
+        // bu siljishni qaytarib qo'yadi.
+        collapseChildGroupLevels(partnersByParent, cfg);
+
+        // 10.6. CHILD GROUP ROW ALIGNMENT
+        // Turli partnerlar balandligi farq qilsa (masalan, phantom "Add partner"
+        // va haqiqiy spouse), collapseChildGroupLevels ularni turli Y ga qo'yadi.
+        // Bu qadam barcha _ft_child_group_ bolalarini bir parentNode ichida
+        // ENG PASTKI (maksimal) Y ga hizalashtiradi — chiziqlar bir qatordan
+        // boshlanishi ta'minlanadi.
+        alignChildGroupRows(nodeMap, partnersByParent, cfg);
+
         setNeighbors(new ArrayList<>(roots), cfg.orientation);
 
         Map<String, NodePosition> result = new LinkedHashMap<>();
@@ -894,6 +910,118 @@ public class OrgChartLayoutCalculatorNew {
                     shiftSubtreeX(partner, dx);
                     shiftSubtreeY(partner, dy);
                     curY += partner.height + vGap;
+                }
+            }
+        }
+    }
+
+    /**
+     * addMode da _ft_child_group_ virtual qatlam collapsesi.
+     *
+     * Muammo: layoutPartnerSubtree ichida secondWalk _ft_child_group_ ni
+     *   partner.level+1 ga, uning bolalarini (Add son/daughter) esa
+     *   partner.level+2 ga joylashtiradi. Bu (group.height + levelSep)
+     *   miqdorida qo'shimcha bo'shliq hosil qiladi.
+     *
+     * Yechim: _ft_child_group_ bolalarini (Add son/daughter) yuqoriga
+     *   (partner.y + partner.height + levelSep) ga tortamiz — ya'ni
+     *   spouse chizig'i tugagan joyiga.
+     *
+     * MUHIM: synchronizeLevelY dan KEYIN chaqirilishi shart,
+     *   aks holda level sinxronizatsiyasi bu siljishni qaytaradi.
+     */
+    private void collapseChildGroupLevels(
+            Map<String, List<Node>> partnersByParent, LayoutConfig cfg) {
+        for (List<Node> partners : partnersByParent.values()) {
+            for (Node partner : partners) {
+                for (Node c : partner.children) {
+                    if (c.isPartner) continue;
+                    if (c.id == null || !c.id.startsWith("_ft_child_group_")) continue;
+                    if (c.children.isEmpty()) continue;
+
+                    // targetY: spouse (partner) ning pastki chetidan levelSep past
+                    double targetY = partner.y + partner.height + cfg.levelSeparation;
+
+                    // _ft_child_group_ o'zini targetY ga siljitamiz
+                    c.y = targetY;
+
+                    // Bolalar orasidagi eng yuqori Y (ular vertikal stack)
+                    double minGcY = Double.MAX_VALUE;
+                    for (Node gc : c.children) {
+                        if (gc.y < minGcY) minGcY = gc.y;
+                    }
+
+                    // Barcha bolalarni bir xil miqdorda yuqoriga ko'taramiz
+                    double shift = targetY - minGcY;
+                    if (Math.abs(shift) > 0.5) {
+                        for (Node gc : c.children) {
+                            shiftSubtreeY(gc, shift);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Bir parentNode ga tegishli barcha _ft_child_group_ bolalarini
+     * bir xil Y qatorga hizalashtiradi.
+     *
+     * Muammo: turli partnerlar (masalan, "Add partner" phantom va haqiqiy spouse)
+     *   balandliklari farq qilishi mumkin. collapseChildGroupLevels ularni
+     *   (partner.y + partner.height + levelSep) ga qo'yadi. Balandlik farqi
+     *   tufayli ular turli Y dan boshlanib qoladi — chap va o'ng guruhlar
+     *   mos kelmaydigan satrlarda chiqadi.
+     *
+     * Yechim: bitta parentNode ichidagi barcha _ft_child_group_ lar uchun
+     *   birinchi bolaning ENG KATTA (eng past) Y sini topib, barchani
+     *   o'sha Y ga tekislash.
+     */
+    private void alignChildGroupRows(
+            Map<String, Node> nodeMap,
+            Map<String, List<Node>> partnersByParent, LayoutConfig cfg) {
+
+        for (Map.Entry<String, List<Node>> e : partnersByParent.entrySet()) {
+            Node parentNode = nodeMap.get(e.getKey());
+            if (parentNode == null) continue;
+
+            // Bu parentNodega tegishli barcha _ft_child_group_ larni yig'amiz
+            List<Node> childGroups = new ArrayList<>();
+            for (Node partner : e.getValue()) {
+                for (Node c : partner.children) {
+                    if (!c.isPartner
+                            && c.id != null
+                            && c.id.startsWith("_ft_child_group_")
+                            && !c.children.isEmpty()) {
+                        childGroups.add(c);
+                    }
+                }
+            }
+            if (childGroups.size() < 2) continue; // hizalashtirish kerak emas
+
+            // Har bir guruhning birinchi bolasining Y sini topamiz
+            // va ularning eng kattasini (eng pastdagisin) olamiz
+            double maxFirstRowY = Double.NEGATIVE_INFINITY;
+            for (Node cg : childGroups) {
+                double minY = Double.MAX_VALUE;
+                for (Node gc : cg.children) {
+                    if (gc.y < minY) minY = gc.y;
+                }
+                if (minY > maxFirstRowY) maxFirstRowY = minY;
+            }
+
+            // Yuqoriroqda qolgan guruhlarni pastga siljitamiz
+            for (Node cg : childGroups) {
+                double minY = Double.MAX_VALUE;
+                for (Node gc : cg.children) {
+                    if (gc.y < minY) minY = gc.y;
+                }
+                double shift = maxFirstRowY - minY;
+                if (Math.abs(shift) > 0.5) {
+                    cg.y = maxFirstRowY; // _ft_child_group_ ning o'zini ham siljitamiz
+                    for (Node gc : cg.children) {
+                        shiftSubtreeY(gc, shift);
+                    }
                 }
             }
         }
