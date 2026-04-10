@@ -315,14 +315,18 @@ public class OrgChartLayoutCalculatorNew {
             }
 
             if (inAddMode) {
-                // Add Mode: AddPartner (phantom) -> LEFT, other spouses -> RIGHT
+                // Add Mode: AddPartner (phantom) larni chap va o'ngga tarqatish
+                int phantomCount = 0;
                 for (Node partner : e.getValue()) {
                     boolean isPhantom = partner.id != null &&
                             (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
-                    if (isPhantom)
-                        leftPartners.add(partner);
-                    else
+                    if (isPhantom) {
+                        if (phantomCount % 2 == 0) leftPartners.add(partner);
+                        else rightPartners.add(partner);
+                        phantomCount++;
+                    } else {
                         rightPartners.add(partner);
+                    }
                 }
             } else {
                 // Normal Mode: respect partnerType
@@ -497,14 +501,18 @@ public class OrgChartLayoutCalculatorNew {
             }
 
             if (inAddMode) {
-                // Add Mode: AddPartner (phantom) -> LEFT, other spouses -> RIGHT
+                // Add Mode: AddPartner (phantom) larni chap va o'ngga tarqatish
+                int phantomCount = 0;
                 for (Node partner : e.getValue()) {
                     boolean isPhantom = partner.id != null &&
                             (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
-                    if (isPhantom)
-                        leftPartners.add(partner);
-                    else
+                    if (isPhantom) {
+                        if (phantomCount % 2 == 0) leftPartners.add(partner);
+                        else rightPartners.add(partner);
+                        phantomCount++;
+                    } else {
                         rightPartners.add(partner);
+                    }
                 }
             } else {
                 // Normal Mode: respect partnerType
@@ -869,14 +877,18 @@ public class OrgChartLayoutCalculatorNew {
             }
 
             if (inAddMode) {
-                // Add Mode: AddPartner (phantom) -> LEFT, other spouses -> RIGHT
+                // Add Mode: AddPartner (phantom) larni chap va o'ngga tarqatish
+                int phantomCount = 0;
                 for (Node partner : e.getValue()) {
                     boolean isPhantom = partner.id != null &&
                             (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
-                    if (isPhantom)
-                        leftPartners.add(partner);
-                    else
+                    if (isPhantom) {
+                        if (phantomCount % 2 == 0) leftPartners.add(partner);
+                        else rightPartners.add(partner);
+                        phantomCount++;
+                    } else {
                         rightPartners.add(partner);
+                    }
                 }
             } else {
                 // Normal Mode: respect partnerType
@@ -1568,13 +1580,17 @@ public class OrgChartLayoutCalculatorNew {
             }
 
             if (inAddMode) {
+                int phantomCount = 0;
                 for (Node partner : partners) {
                     boolean isPhantom = partner.id != null &&
                             (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
-                    if (isPhantom)
-                        leftPartners.add(partner);
-                    else
+                    if (isPhantom) {
+                        if (phantomCount % 2 == 0) leftPartners.add(partner);
+                        else rightPartners.add(partner);
+                        phantomCount++;
+                    } else {
                         rightPartners.add(partner);
+                    }
                 }
             } else {
                 for (Node partner : partners) {
