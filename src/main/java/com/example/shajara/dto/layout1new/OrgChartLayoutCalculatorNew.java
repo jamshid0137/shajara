@@ -134,7 +134,7 @@ public class OrgChartLayoutCalculatorNew {
         if (nodeInputs == null || nodeInputs.isEmpty())
             return Collections.emptyMap();
 
-// 1. Build nodeMap
+        // 1. Build nodeMap
         Map<String, Node> nodeMap = new LinkedHashMap<>();
         for (NodeInput inp : nodeInputs) {
             Node n = new Node(inp.id,
@@ -321,8 +321,10 @@ public class OrgChartLayoutCalculatorNew {
                     boolean isPhantom = partner.id != null &&
                             (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
                     if (isPhantom) {
-                        if (phantomCount % 2 == 0) leftPartners.add(partner);
-                        else rightPartners.add(partner);
+                        if (phantomCount % 2 == 0)
+                            leftPartners.add(partner);
+                        else
+                            rightPartners.add(partner);
                         phantomCount++;
                     } else {
                         rightPartners.add(partner);
@@ -507,8 +509,10 @@ public class OrgChartLayoutCalculatorNew {
                     boolean isPhantom = partner.id != null &&
                             (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
                     if (isPhantom) {
-                        if (phantomCount % 2 == 0) leftPartners.add(partner);
-                        else rightPartners.add(partner);
+                        if (phantomCount % 2 == 0)
+                            leftPartners.add(partner);
+                        else
+                            rightPartners.add(partner);
                         phantomCount++;
                     } else {
                         rightPartners.add(partner);
@@ -883,8 +887,10 @@ public class OrgChartLayoutCalculatorNew {
                     boolean isPhantom = partner.id != null &&
                             (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
                     if (isPhantom) {
-                        if (phantomCount % 2 == 0) leftPartners.add(partner);
-                        else rightPartners.add(partner);
+                        if (phantomCount % 2 == 0)
+                            leftPartners.add(partner);
+                        else
+                            rightPartners.add(partner);
                         phantomCount++;
                     } else {
                         rightPartners.add(partner);
@@ -931,25 +937,28 @@ public class OrgChartLayoutCalculatorNew {
      * addMode da _ft_child_group_ virtual qatlam collapsesi.
      *
      * Muammo: layoutPartnerSubtree ichida secondWalk _ft_child_group_ ni
-     *   partner.level+1 ga, uning bolalarini (Add son/daughter) esa
-     *   partner.level+2 ga joylashtiradi. Bu (group.height + levelSep)
-     *   miqdorida qo'shimcha bo'shliq hosil qiladi.
+     * partner.level+1 ga, uning bolalarini (Add son/daughter) esa
+     * partner.level+2 ga joylashtiradi. Bu (group.height + levelSep)
+     * miqdorida qo'shimcha bo'shliq hosil qiladi.
      *
      * Yechim: _ft_child_group_ bolalarini (Add son/daughter) yuqoriga
-     *   (partner.y + partner.height + levelSep) ga tortamiz — ya'ni
-     *   spouse chizig'i tugagan joyiga.
+     * (partner.y + partner.height + levelSep) ga tortamiz — ya'ni
+     * spouse chizig'i tugagan joyiga.
      *
      * MUHIM: synchronizeLevelY dan KEYIN chaqirilishi shart,
-     *   aks holda level sinxronizatsiyasi bu siljishni qaytaradi.
+     * aks holda level sinxronizatsiyasi bu siljishni qaytaradi.
      */
     private void collapseChildGroupLevels(
             Map<String, List<Node>> partnersByParent, LayoutConfig cfg) {
         for (List<Node> partners : partnersByParent.values()) {
             for (Node partner : partners) {
                 for (Node c : partner.children) {
-                    if (c.isPartner) continue;
-                    if (c.id == null || !c.id.startsWith("_ft_child_group_")) continue;
-                    if (c.children.isEmpty()) continue;
+                    if (c.isPartner)
+                        continue;
+                    if (c.id == null || !c.id.startsWith("_ft_child_group_"))
+                        continue;
+                    if (c.children.isEmpty())
+                        continue;
 
                     // targetY: spouse (partner) ning pastki chetidan levelSep past
                     double targetY = partner.y + partner.height + cfg.levelSeparation;
@@ -960,7 +969,8 @@ public class OrgChartLayoutCalculatorNew {
                     // Bolalar orasidagi eng yuqori Y (ular vertikal stack)
                     double minGcY = Double.MAX_VALUE;
                     for (Node gc : c.children) {
-                        if (gc.y < minGcY) minGcY = gc.y;
+                        if (gc.y < minGcY)
+                            minGcY = gc.y;
                     }
 
                     // Barcha bolalarni bir xil miqdorda yuqoriga ko'taramiz
@@ -980,14 +990,14 @@ public class OrgChartLayoutCalculatorNew {
      * bir xil Y qatorga hizalashtiradi.
      *
      * Muammo: turli partnerlar (masalan, "Add partner" phantom va haqiqiy spouse)
-     *   balandliklari farq qilishi mumkin. collapseChildGroupLevels ularni
-     *   (partner.y + partner.height + levelSep) ga qo'yadi. Balandlik farqi
-     *   tufayli ular turli Y dan boshlanib qoladi — chap va o'ng guruhlar
-     *   mos kelmaydigan satrlarda chiqadi.
+     * balandliklari farq qilishi mumkin. collapseChildGroupLevels ularni
+     * (partner.y + partner.height + levelSep) ga qo'yadi. Balandlik farqi
+     * tufayli ular turli Y dan boshlanib qoladi — chap va o'ng guruhlar
+     * mos kelmaydigan satrlarda chiqadi.
      *
      * Yechim: bitta parentNode ichidagi barcha _ft_child_group_ lar uchun
-     *   birinchi bolaning ENG KATTA (eng past) Y sini topib, barchani
-     *   o'sha Y ga tekislash.
+     * birinchi bolaning ENG KATTA (eng past) Y sini topib, barchani
+     * o'sha Y ga tekislash.
      */
     private void alignChildGroupRows(
             Map<String, Node> nodeMap,
@@ -995,7 +1005,8 @@ public class OrgChartLayoutCalculatorNew {
 
         for (Map.Entry<String, List<Node>> e : partnersByParent.entrySet()) {
             Node parentNode = nodeMap.get(e.getKey());
-            if (parentNode == null) continue;
+            if (parentNode == null)
+                continue;
 
             // Bu parentNodega tegishli barcha _ft_child_group_ larni yig'amiz
             List<Node> childGroups = new ArrayList<>();
@@ -1009,24 +1020,53 @@ public class OrgChartLayoutCalculatorNew {
                     }
                 }
             }
-            if (childGroups.size() < 2) continue; // hizalashtirish kerak emas
+            if (childGroups.isEmpty())
+                continue;
 
-            // Har bir guruhning birinchi bolasining Y sini topamiz
-            // va ularning eng kattasini (eng pastdagisin) olamiz
-            double maxFirstRowY = Double.NEGATIVE_INFINITY;
-            for (Node cg : childGroups) {
-                double minY = Double.MAX_VALUE;
-                for (Node gc : cg.children) {
-                    if (gc.y < minY) minY = gc.y;
+            // Asosiy odamning o'z farzandlari (hech bir spousega ulanmaganlari) orasidan
+            // eng tepada joylashganining kordinatasini olamiz
+            double highestOwnChildY = Double.MAX_VALUE;
+            boolean hasOwnChild = false;
+            for (Node c : parentNode.children) {
+                if (!c.isPartner && (c.id == null || !c.id.startsWith("_ft_child_group_"))) {
+                    if (c.y < highestOwnChildY) {
+                        highestOwnChildY = c.y;
+                    }
+                    hasOwnChild = true;
                 }
-                if (minY > maxFirstRowY) maxFirstRowY = minY;
             }
 
-            // Yuqoriroqda qolgan guruhlarni pastga siljitamiz
+            double maxFirstRowY;
+            if (hasOwnChild) {
+                // O'z farzandlarining eng tepadagisi bilan bir xil qatorda chizilsin
+                maxFirstRowY = highestOwnChildY;
+            } else {
+                if (childGroups.size() < 2)
+                    continue; // 2 tadan kam bo'lsa tekislash shart emas
+                
+                // Har bir guruhning birinchi bolasining Y sini topamiz
+                // va ularning eng kattasini (eng pastdagisin) olamiz
+                maxFirstRowY = Double.NEGATIVE_INFINITY;
+                for (Node cg : childGroups) {
+                    double minY = Double.MAX_VALUE;
+                    for (Node gc : cg.children) {
+                        if (gc.y < minY)
+                            minY = gc.y;
+                    }
+                    if (minY > maxFirstRowY)
+                        maxFirstRowY = minY;
+                }
+            }
+
+            if (maxFirstRowY == Double.NEGATIVE_INFINITY || maxFirstRowY == Double.MAX_VALUE)
+                continue;
+
+            // Yuqoriroqda qolgan guruhlarni siljitamiz
             for (Node cg : childGroups) {
                 double minY = Double.MAX_VALUE;
                 for (Node gc : cg.children) {
-                    if (gc.y < minY) minY = gc.y;
+                    if (gc.y < minY)
+                        minY = gc.y;
                 }
                 double shift = maxFirstRowY - minY;
                 if (Math.abs(shift) > 0.5) {
@@ -1585,8 +1625,10 @@ public class OrgChartLayoutCalculatorNew {
                     boolean isPhantom = partner.id != null &&
                             (partner.id.toLowerCase().contains("addpartner") || partner.id.startsWith("_ft_"));
                     if (isPhantom) {
-                        if (phantomCount % 2 == 0) leftPartners.add(partner);
-                        else rightPartners.add(partner);
+                        if (phantomCount % 2 == 0)
+                            leftPartners.add(partner);
+                        else
+                            rightPartners.add(partner);
                         phantomCount++;
                     } else {
                         rightPartners.add(partner);
