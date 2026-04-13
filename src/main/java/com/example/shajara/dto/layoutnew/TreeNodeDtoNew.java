@@ -22,7 +22,7 @@ public class TreeNodeDtoNew {
     private Long fatherId; // Person.fatherId
     private Long motherId; // Person.motherId
 
-    private double x;
-    private double y;
+    private Double x;
+    private Double y;
 }
 
