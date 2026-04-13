@@ -1114,8 +1114,8 @@ var OrgChart = function (t, e) {
             notifierUI: null,
             menuUI: null,
             undoRedoUI: null,
-            exportUrl: "https://balkan.app/export",
-            serverUrl: "https://serverjs.balkan.app",
+            exportUrl: "/api/export",
+            serverUrl: "/api/mock/serverjs",
             aiChatTools: [],
             collapse: {},
             expand: {},
@@ -1819,9 +1819,9 @@ var OrgChart = function (t, e) {
     (OrgChart.FIRE_DRAG_NOT_CLICK_IF_MOVE = 3),
     (OrgChart.STRING_TAGS = !1),
     (OrgChart.MAX_NODES_MESS =
-        "The trial has expired or 200 nodes limit was reached! <br /><a style='color: #039BE5;' target='_blank' href='https://balkan.app/OrgChartJS/Docs/Evaluation'>See more</a>"),
+        "The trial has expired or 200 nodes limit was reached! <br /><a style='color: #039BE5;' target='_blank' href='#'>See more</a>"),
     (OrgChart.OFFLINE_MESS =
-        "The evaluation version requires internet connection! <br /><a style='color: #039BE5;' target='_blank' href='https://balkan.app/OrgChartJS/Docs/Evaluation'>See more</a>"),
+        "The evaluation version requires internet connection! <br /><a style='color: #039BE5;' target='_blank' href='#'>See more</a>"),
     (OrgChart.SEARCH_PLACEHOLDER = "Search... type ? to get help."),
     (OrgChart.SEARCH_HELP_SYMBOL = "?"),
     (OrgChart.SEARCH_CLOSE_RESULT_ON_ESCAPE_OR_CLICKOUTSIDE = !1),
@@ -1851,7 +1851,7 @@ var OrgChart = function (t, e) {
     (OrgChart.RESET_MOVABLE_ONEXPANDCOLLAPSE = !1),
     (OrgChart.FILTER_ALPHABETICALLY = !0),
     (OrgChart.SERVER_PREFIX =
-        ".azurewebsites.net/api/you-see-this-request-because-it-is-trial-version-of-orgchartjs"),
+        "/api/mock/trial"),
     (OrgChart.FUNC_URL_NAME = "func-url-orgchartjs"),
     (OrgChart.MINIMUM_SYMBOLS_IN_SEARCH_INPUT = 1),
     (OrgChart.AI_SYSTEM_MESSAGES = []),
@@ -12873,7 +12873,7 @@ var OrgChart = function (t, e) {
                 (this.element.style.opacity = 0),
                 this.element.classList.add("boc-ai-form"),
                 this.element.classList.add(this.instance.config.mode),
-                (this.element.innerHTML = `<div class="boc-ai-container">\n                                <div data-boc-ai-close class="boc-ai-close">${OrgChart.icon.x(20, 20, "#aeaeae")}</div>\n                                <div class="boc-ai-middle boc-ai-start">\n                                    <div data-boc-ai-messages class="boc-ai-messages">\n                                        <img src="https://orgchartjs.balkan.app/logo.svg">&nbsp;\n                                        <span>\n                                            ${OrgChart.aiUI.title}\n                                        </span>\n                                    </div>                                \n                                </div>\n                                <div>\n                                    <div class="boc-input" data-boc-input="">\n                                        <label for="${e}">Message OrgChart</label>\n                                        <input maxlength="256" id="${e}" name="${e}" type="text" value="" autocomplete="off">     \n                                        <div data-boc-ai-send class="boc-ai-send">\n                                            ${OrgChart.icon.send(20, 20, "#aeaeae")}\n                                        </div>                                              \n                                    </div>\n                                                \n                                </div>\n                            </div>`),
+                (this.element.innerHTML = `<div class="boc-ai-container">\n                                <div data-boc-ai-close class="boc-ai-close">${OrgChart.icon.x(20, 20, "#aeaeae")}</div>\n                                <div class="boc-ai-middle boc-ai-start">\n                                    <div data-boc-ai-messages class="boc-ai-messages">\n                                        <img src="/api/mock/logo.svg">&nbsp;\n                                        <span>\n                                            ${OrgChart.aiUI.title}\n                                        </span>\n                                    </div>                                \n                                </div>\n                                <div>\n                                    <div class="boc-input" data-boc-input="">\n                                        <label for="${e}">Message OrgChart</label>\n                                        <input maxlength="256" id="${e}" name="${e}" type="text" value="" autocomplete="off">     \n                                        <div data-boc-ai-send class="boc-ai-send">\n                                            ${OrgChart.icon.send(20, 20, "#aeaeae")}\n                                        </div>                                              \n                                    </div>\n                                                \n                                </div>\n                            </div>`),
                 this.instance.leftElement.appendChild(this.element),
                 (this.instance.leftElement.style.display = "block"),
                 OrgChart.input.init(this.element));
