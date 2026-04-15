@@ -109,20 +109,22 @@ public class AuthService {
         entity.setName(dto.getName());
         entity.setPassword(bc.encode(dto.getPassword()));
         entity.setUsername(dto.getUsername());
-        entity.setStatus(GeneralStatus.IN_REGISTRATION);
+        // entity.setStatus(GeneralStatus.IN_REGISTRATION);
+        entity.setStatus(GeneralStatus.ACTIVE);
         entity.setVisible(true);
         entity.setCreatedDate(LocalDateTime.now());
         profileRepository.save(entity);// save
         // insert role
         profileRoleService.create(entity.getId(), ProfileRole.ROLE_USER);
         if (EmailUtil.isEmail(dto.getUsername())) {
-            emailSendingService.sendRegistrationEmail(dto.getUsername(), entity.getId());
+            // emailSendingService.sendRegistrationEmail(dto.getUsername(), entity.getId());
         } else if (SmsUtil.isPhone(dto.getUsername())) {
             // todo
-            throw new AppBadException("Sms provider ishlamayapti.Email orqali registratsiya qiling !");
+            // throw new AppBadException("Sms provider ishlamayapti.Email orqali
+            // registratsiya qiling !");
             // smsSendingService.registrationSms(dto.getUsername());
         } else {
-            throw new AppBadException("wrong username !");
+            // throw new AppBadException("wrong username !");
         }
         return new AppResponse<>("Activation link send to your email");
     }
