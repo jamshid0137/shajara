@@ -124,7 +124,7 @@ public class AuthService {
             // registratsiya qiling !");
             // smsSendingService.registrationSms(dto.getUsername());
         } else {
-            // throw new AppBadException("wrong username !");
+            throw new AppBadException("wrong username !");
         }
         return new AppResponse<>("Activation link send to your email");
     }
