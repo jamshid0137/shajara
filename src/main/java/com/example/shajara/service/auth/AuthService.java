@@ -91,7 +91,12 @@ public class AuthService {
                     // registratsiya qiling !");
                     // smsSendingService.registrationSms(dto.getUsername());
                 } else {
-                    throw new AppBadException("wrong username !");
+                    throw new AppBadException("wrong username !Email yoki telefon number to'g'ri kiriting !");// xatosi
+                                                                                                              // bor
+                                                                                                              // saqlamasdan
+                                                                                                              // oldin
+                    // qilish kerak edi
+                    // bazada
                 }
                 // return new AppResponse<>("Activation link send to your email");
                 return new AppResponse<>("Tabriklaymiz ,Account created ,Login qilib kiring !");
@@ -124,7 +129,7 @@ public class AuthService {
             // registratsiya qiling !");
             // smsSendingService.registrationSms(dto.getUsername());
         } else {
-            throw new AppBadException("wrong username !");
+            throw new AppBadException("wrong username !Email yoki telefon number to'g'ri kiriting !");
         }
         return new AppResponse<>("Activation link send to your email");
     }
